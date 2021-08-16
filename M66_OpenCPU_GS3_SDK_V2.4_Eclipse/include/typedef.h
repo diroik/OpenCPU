@@ -110,6 +110,19 @@ typedef struct{
     unsigned int        srcPort;
 }sIpSettings;
 
+typedef struct{
+    char                srvAddress[32];
+    char                fileName[16];
+
+    unsigned int        srvPort;
+
+    char				usrName[16];
+    char				usrPassw[16];
+}sFtpSettings;
+
+typedef struct{
+	char				cmdPassw[16];
+}sSecuritySettings;
 
 typedef struct{
     u16    crc;
@@ -132,7 +145,8 @@ typedef struct{
     u8				in1Timeout;
     u8				in2Timeout;
 
-    //u16 			koeff;
+    sSecuritySettings 	securitySettings;
+    sFtpSettings		ftpSettings;
 }sProgrammSettings;
 
 

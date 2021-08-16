@@ -462,7 +462,7 @@ void proc_subtask1(s32 TaskId)
 static void wdt_callback_onTimer(u32 timerId, void* param)
 {
     s32* wtdid = (s32*)param;
-    //Ql_Debug_Trace("<-- time to feed logic watchdog wtdid=%d-->\r\n", *wtdid);
+    Ql_Debug_Trace("<-- time to feed logic watchdog wtdid=%d-->\r\n", *wtdid);
     if(programmData.needReboot == FALSE)
     {
     	Ql_WTD_Feed(*wtdid);
@@ -580,7 +580,7 @@ static void CallBack_UART_Hdlr(Enum_SerialPort port, Enum_UARTEventType msg, boo
            s32 totalBytes = ReadSerialPort(port, m_RxBuf_Uart, sizeof(m_RxBuf_Uart));
            if (totalBytes > 0)
            {
-               proc_handle(port, m_RxBuf_Uart, sizeof(m_RxBuf_Uart));
+               proc_handle(port, m_RxBuf_Uart, totalBytes/*sizeof(m_RxBuf_Uart)*/);
            }
            break;
         }
@@ -854,8 +854,12 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             }
             case STATE_SOC_SEND:
             {
-                if (!Ql_strlen(m_send_buf))//no data need to send
+            	if(m_remain_len <= 0)
+                {
+					//APP_DEBUG("<-- No data need to send, waiting to send data -->\r\n");
                     break;
+				}
+
                 
                 m_tcp_state = STATE_SOC_SENDING;
                 
@@ -1151,7 +1155,8 @@ void callback_socket_write(s32 socketId, s32 errCode, void* customParam )
             m_pCurrentPos += ret; 
             m_nSentLen += ret;
         }
-     }while(1);
+     }
+    while(1);
 }
 
 void CallBack_GPRS_Deactived(u8 contextId, s32 errCode, void* customParam )
@@ -1172,9 +1177,19 @@ static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *custo
 
 	s32 index = *((s32*)customParam);
 	if(index % 30 == 0)
-		APP_DEBUG("<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam))
+	{
+		//APP_DEBUG( "<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam) );
+		u32 capacity, voltage;
+		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
+		if(ret == QL_RET_OK)
+		{
+			APP_DEBUG( "<-- PowerSupply: capacity(percent)=%d  voltage(mV)=%d -->\r\n", capacity, voltage);
+		}
+	}
+
     *((s32*)customParam) += 1;
 }
+
 /*****************************************************************
 * other functions
 ******************************************************************/
@@ -1367,13 +1382,14 @@ static s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/u8* pBuffer, /*[in]*/u3
 
 static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 {
+	APP_DEBUG("Read data from port=%d, len=%d\r\n", port, len);
+	pData[len] = 0;
 	if(port == UART_PORT3)
 	{
 		//send it to server
-		APP_DEBUG("Read data from UART_PORT3 len=%d", len);
 		m_pCurrentPos = m_send_buf;
 		Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
-		m_remain_len = Ql_strlen(m_pCurrentPos);
+		m_remain_len+=len;
 	}
 	else
 	{
@@ -1391,7 +1407,7 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 			//if not command, send it to server
 			m_pCurrentPos = m_send_buf;
 			Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
-			m_remain_len = Ql_strlen(m_pCurrentPos);
+			m_remain_len+=len;
 		}
 	}
 }
@@ -1987,9 +2003,16 @@ static char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *set
 				Ql_strcpy(tmp_buff, "\r\ncommit error\r\n");
 			ret = tmp_buff;
 		}
-		else if(Ql_strcmp(src_str, "cmd get signal") == 0)
+		else if(Ql_strcmp(src_str, "cmd update firmware by ftp") == 0)
 		{
-			ret = Gsm_GetSignal(tmp_buff);
+			//u8 m_URL_Buffer[512];
+			s32 strLen = Ql_sprintf(tmp_buff, "ftp://%s/%s:%d@%s:%s",
+					sett_in_ram->ftpSettings.srvAddress,
+					sett_in_ram->ftpSettings.fileName,
+					sett_in_ram->ftpSettings.srvPort,
+					sett_in_ram->ftpSettings.usrName,
+					sett_in_ram->ftpSettings.usrPassw);
+			ret = tmp_buff;
 		}
 		else
 		{
@@ -2420,6 +2443,10 @@ static char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+	else if(Ql_strcmp(cmd, "signal") == 0)
+	{
+		ret = Gsm_GetSignal(tmp_buff);
+	}
 
   }
   return ret;

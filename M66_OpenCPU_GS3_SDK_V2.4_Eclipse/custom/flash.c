@@ -44,7 +44,13 @@ static sProgrammSettings firstInitSettings =
     .in1Timeout	   = 3,
     .in2Timeout	   = 3,
 
-    //.koeff = 1000
+    .securitySettings.cmdPassw = "12345678",
+
+    .ftpSettings.srvAddress = "94.228.255.152",
+    .ftpSettings.srvPort = 21,
+    .ftpSettings.fileName = "APPGS3MDM32.bin",
+    .ftpSettings.usrName = "firmware",
+    .ftpSettings.usrPassw = "123qwe45RTY"
 };
 
 
