@@ -47,6 +47,14 @@ typedef enum {
     RAI_UPLOAD_WITH_ACK
 }Enum_RAI_Config;
 
+
+typedef struct
+{
+    s32 capacity;
+    s32 voltage;
+}ST_SysPower;
+
+
 /*****************************************************************
 * Function:     RIL_GetFirmwareVer
 * 

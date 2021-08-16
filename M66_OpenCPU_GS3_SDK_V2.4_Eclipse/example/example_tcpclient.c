@@ -1174,7 +1174,6 @@ void CallBack_GPRS_Deactived(u8 contextId, s32 errCode, void* customParam )
 
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam)
 {
-
 	s32 index = *((s32*)customParam);
 	if(index % 30 == 0)
 	{

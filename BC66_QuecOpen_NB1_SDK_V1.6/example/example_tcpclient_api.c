@@ -275,7 +275,7 @@ static void CallBack_UART_Hdlr(Enum_SerialPort port, Enum_UARTEventType msg, boo
            s32 totalBytes = ReadSerialPort(port, m_RxBuf_Uart, sizeof(m_RxBuf_Uart));
            if (totalBytes > 0)
            {
-               proc_handle(port, m_RxBuf_Uart,sizeof(m_RxBuf_Uart));
+               proc_handle(port, m_RxBuf_Uart, totalBytes /*sizeof(m_RxBuf_Uart)*/);
            }
            break;
         }
@@ -315,22 +315,22 @@ static s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/u8* pBuffer, /*[in]*/u3
 
 static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 {
+	APP_DEBUG("Read data from port=%d, len=%d\r\n", port, len);
+	pData[len] = 0;
 	if(port == UART_PORT2)
 	{
 		//send it to server
-		APP_DEBUG("Read data from UART_PORT2 len=%d", len);
 		m_pCurrentPos = m_send_buf;
 		Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
-		m_remain_len = Ql_strlen(m_pCurrentPos);
+		m_remain_len+=len;
 	}
 	else
 	{
-		APP_DEBUG("Read data from port=%d", port);
 	    char tmp_buff[150] = {0};
 		char *answer = Parse_Command(pData, tmp_buff, &programmSettings, &programmData);
 
 
-		if( answer != NULL )
+		if( answer != NULL)
 		{
 			//u32 alen = Ql_strlen(answer);
 			APP_DEBUG("%s", answer);
@@ -340,7 +340,7 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 			//if not command, send it to server
 			m_pCurrentPos = m_send_buf;
 			Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
-			m_remain_len = Ql_strlen(m_pCurrentPos);
+			m_remain_len+=len;
 		}
 	}
 }
@@ -710,8 +710,17 @@ void callback_socket_accept(s32 listenSocketId, s32 errCode, void* customParam )
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam)
 {
 	s32 index = *((s32*)customParam);
-	//if(index % 30 == 0)
-	APP_DEBUG("<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam))
+	if(index % 30 == 0)
+	{
+		//APP_DEBUG("<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam));
+		u32 capacity, voltage;
+		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
+		if(ret == QL_RET_OK)
+		{
+			APP_DEBUG( "<-- PowerSupply: capacity(percent)=%d  voltage(mV)=%d -->\r\n", capacity, voltage);
+		}
+	}
+
     *((s32*)customParam) += 1;
 }
 
@@ -1028,7 +1037,7 @@ static char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *set
 			Ql_strcpy(tmp_buff, "\r\nrebooting\r\n");
 			ret = tmp_buff;
 		}
-		if(Ql_strcmp(src_str, "cmd reconnect") == 0)
+		else if(Ql_strcmp(src_str, "cmd reconnect") == 0)
 		{
 			programmData->reconnectCnt = sett_in_ram->secondsToReconnect;
 			Ql_strcpy(tmp_buff, "\r\nreconnecting\r\n");
@@ -1041,10 +1050,6 @@ static char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *set
 			else
 				Ql_strcpy(tmp_buff, "\r\ncommit error\r\n");
 			ret = tmp_buff;
-		}
-		else if(Ql_strcmp(src_str, "cmd get signal") == 0)
-		{
-			ret = Gsm_GetSignal(tmp_buff);
 		}
 		else
 		{
@@ -1479,7 +1484,10 @@ static char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
-
+	else if(Ql_strcmp(cmd, "signal") == 0)
+	{
+		ret = Gsm_GetSignal(tmp_buff);
+	}
   }
   return ret;
 }

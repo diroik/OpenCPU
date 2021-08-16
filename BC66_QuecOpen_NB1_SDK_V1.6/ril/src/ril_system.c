@@ -46,6 +46,96 @@
 
 #ifdef __OCPU_RIL_SUPPORT__ 
 
+
+static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
+{
+    ST_SysPower *PowerSupply;
+
+    PowerSupply = (ST_SysPower *)userdata;
+    char *head = Ql_RIL_FindString(line, len, "+CBC:"); //continue wait
+    if(head)
+    {
+        char strTmp[10];
+        char *p1,*p2;
+        p1 = Ql_strstr(head, ":");
+        p2 = Ql_strstr(p1 + 1, ",");
+        if (p1 && p2)
+        {
+            p1 = p2;
+            p2 = Ql_strstr(p1 + 1, ",");
+            if (p1 && p2)
+            {
+                Ql_memset(strTmp, 0x0, sizeof(strTmp));
+                Ql_memcpy(strTmp, p1 + 1, p2 - p1 - 1);
+                PowerSupply->capacity = Ql_atoi(strTmp);
+                p1 = p2;
+                p2 = Ql_strstr(p1 + 1, "\r\n");
+                if (p1 && p2)
+                {
+                    Ql_memset(strTmp, 0x0, sizeof(strTmp));
+                    Ql_memcpy(strTmp, p1 + 1, p2 - p1 - 1);
+                    PowerSupply->voltage = Ql_atoi(strTmp);
+                }
+            }
+        }
+        //    Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&PowerSupply->capacity,&PowerSupply->voltage);
+        return  RIL_ATRSP_CONTINUE;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_SUCCESS;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    return RIL_ATRSP_CONTINUE; //continue wait
+
+}
+
+
+/*****************************************************************
+* Function:     RIL_GetPowerSupply
+*
+* Description:
+*               This function queries the battery balance, and the battery voltage.
+*
+* Parameters:
+*               capacity:
+*                   [out] battery balance, a percent, ranges from 1 to 100.
+*
+*               voltage:
+*                   [out] battery voltage, unit in mV
+* Return:
+*               QL_RET_OK, indicates this function successes.
+*		   -1, fail.
+*****************************************************************/
+s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
+{
+    s32 ret;
+    ST_SysPower PowerSupply;
+
+    ret = Ql_RIL_SendATCmd("AT+CBC", 6, Power_ATResponse_Hanlder, (void *)&PowerSupply, 0);
+    if (RIL_AT_SUCCESS == ret)
+    {
+        *capacity = PowerSupply.capacity;
+        *voltage  = PowerSupply.voltage;
+    }
+    return ret;
+}
+
+
 static s32 ATRsp_Firmware_Handler(char* line, u32 len, void* param)
 {
     char* pHead = NULL;
@@ -140,7 +230,6 @@ static s32 ATResponse_Handler(char* line, u32 len, void* userData)
     
     return RIL_ATRSP_CONTINUE; //continue wait
 }
-
 
 s32 RIL_GetFirmwareVer(char* version)
 {
