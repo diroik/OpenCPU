@@ -34,6 +34,8 @@
 #include "ql_stdlib.h"
 #include "ql_trace.h"
 
+
+#ifndef __PROJECT_SMART_BUTTON__
 //check Symbol completeness
 static bool Check_Separator(char* pCfgStr)
 {
@@ -114,7 +116,7 @@ s32 Analyse_Command(u8* src_str,s32 symbol_num,u8 symbol, u8* dest_buf)
     switch(symbol)
     {
         case '>':
-            
+
             for(i=0;i<symbol_num;i++)
             {
                 if (p[i+1] = (u8*)Ql_strstr((char*)p[i],">"))
@@ -144,32 +146,7 @@ s32 Analyse_Command(u8* src_str,s32 symbol_num,u8 symbol, u8* dest_buf)
     return result;
 }
 
-//**************************************************
-int clear_all_nulls(char *_ptr, int _size)
-{
-        //
-        char *ptrDst;
-        char *ptrSrc;
 
-        for(int i = 0; i <= _size; i++)
-        {
-          ptrDst = &_ptr[i];
-          if( *ptrDst < ' ')
-          {
-            ptrSrc = &_ptr[i+1];
-            int rsz = (_size-i);
-            for(int j = 0; j < rsz; j++)
-            {
-              ptrDst[j] = ptrSrc[j];
-            }
-            if(rsz > 0)
-            {
-              _size--;
-              i--;
-            }
-          }
-        }
-        _ptr[_size] = 0;
-        return _size;
-}
+#endif
+
 

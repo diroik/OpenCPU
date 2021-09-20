@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cdtprojectproperties>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.IncludePaths">
+<language name="Assembly Source File">
+
+</language>
+<language name="C Source File">
+<includepath workspace_path="true">/${ProjName}/include</includepath>
+<includepath workspace_path="true">/${ProjName}/ril/inc</includepath>
+<includepath workspace_path="true">/${ProjName}/custom/config</includepath>
+<includepath workspace_path="true">/${ProjName}/custom/fota/inc</includepath>
+
+</language>
+<language name="Object File">
+
+</language>
+</section>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.Macros">
+<language name="Assembly Source File">
+<macro>
+<name>__OCPU_COMPILER_GCC__</name><value/>
+</macro>
+
+</language>
+<language name="C Source File">
+<macro>
+<name>__OCPU_COMPILER_GCC__</name><value/>
+</macro>
+<macro>
+<name>__EXAMPLE_TCPCLIENT__</name><value/>
+</macro>
+<macro>
+<name>___EXAMPLE_SYSTEM__</name><value/>
+</macro>
+
+</language>
+<language name="Object File">
+
+</language>
+</section>
+</cdtprojectproperties>

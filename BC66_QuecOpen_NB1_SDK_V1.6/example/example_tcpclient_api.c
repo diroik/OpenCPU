@@ -329,7 +329,6 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 	    char tmp_buff[150] = {0};
 		char *answer = Parse_Command(pData, tmp_buff, &programmSettings, &programmData);
 
-
 		if( answer != NULL)
 		{
 			//u32 alen = Ql_strlen(answer);
@@ -337,6 +336,21 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 		}
 		else
 		{
+			char *s = Ql_strstr(pData, "AT+");
+			//APP_DEBUG("<--Ql_strstr s=[%d] pData=[%d]-->\r\n", (long)s, (long)pData);
+			if(s != NULL && s == pData)
+			{
+				s32 aret = RIL_NW_SendATCmd(pData, tmp_buff);
+				//APP_DEBUG("<--ATret=[%d]-->\r\n", aret);
+				if(aret == RIL_AT_SUCCESS){
+					APP_DEBUG("OK\r\n");
+				}
+				else{
+					APP_DEBUG("ERROR\r\n");
+				}
+				APP_DEBUG("%s", tmp_buff);
+				return;
+			}
 			//if not command, send it to server
 			m_pCurrentPos = m_send_buf;
 			Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
@@ -606,7 +620,7 @@ static void TCP_Callback_Timer(u32 timerId, void* param)
             case TCP_STATE_SOC_CLOSE:
             {
 				ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
-                APP_DEBUG("<--socket closed,ret(%d)-->\r\n",ret);
+                APP_DEBUG("<--socket closed,ret(%d)-->\r\n", ret);
 				
 		        m_socketid = -1;
                 m_remain_len = 0;

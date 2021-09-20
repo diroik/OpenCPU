@@ -112,6 +112,7 @@ typedef struct{
 
 typedef struct{
     char                srvAddress[32];
+    char				filePath[16];
     char                fileName[16];
 
     unsigned int        srvPort;

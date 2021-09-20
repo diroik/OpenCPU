@@ -45,7 +45,7 @@
 
 #ifdef __OCPU_RIL_SUPPORT__ 
 
-#define RIL_FTP_DEBUG_ENABLE 0
+#define RIL_FTP_DEBUG_ENABLE 1
 #if RIL_FTP_DEBUG_ENABLE > 0
 #define RIL_FTP_DEBUG_PORT  UART_PORT1
 static char DBG_Buffer[100];

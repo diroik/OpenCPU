@@ -34,6 +34,89 @@
 #include "ql_stdlib.h"
 #include "ql_trace.h"
 
+
+//**************************************************
+int clear_all_nulls(char *_ptr, int _size)
+{
+        //
+        char *ptrDst;
+        char *ptrSrc;
+
+        for(int i = 0; i <= _size; i++)
+        {
+          ptrDst = &_ptr[i];
+          if( *ptrDst < ' ')
+          {
+            ptrSrc = &_ptr[i+1];
+            int rsz = (_size-i);
+            for(int j = 0; j < rsz; j++)
+            {
+              ptrDst[j] = ptrSrc[j];
+            }
+            if(rsz > 0)
+            {
+              _size--;
+              i--;
+            }
+          }
+        }
+        _ptr[_size] = 0;
+        return _size;
+}
+//**************************************************
+int index_of_char(char *src, char sim)
+{
+
+  int ret = -1;
+  if(!src) return ret;
+  int i = 0;
+  for(;*src; src++)
+  {
+    if(*src == sim)
+      return i;
+    i++;
+  }
+  return ret;
+}
+//**************************************************
+int HexToByte(char *ptr)
+{
+   char ch  = *ptr++;
+   char k   = 0;
+   char result[2] = {0,0};
+
+    while(k < 2)
+    {
+      if( (ch >= 'A') && (ch <= 'F') )
+      {  result[k] = (ch - 'A') + 10; }
+      else if( (ch >= '0') && (ch <= '9') )
+      {  result[k] = ch - '0';}
+      else
+      {  return -1;}
+      ch = *ptr++;
+      k++;
+    }
+    return (result[0] <<= 4) + result[1];
+}
+//**************************************************
+void ByteToHex(char *HEX, char BYTE)
+{
+ char ch = (BYTE >> 4) & 0x0F;
+ char k  = 0;
+
+   while(k < 2)
+   {
+     if(ch > 9)
+     {  *HEX++ = ch + 'A' - 10;}
+     else
+     {  *HEX++ = ch + '0';}
+
+     ch = BYTE & 0x0F;
+     k++;
+   }
+   HEX = NULL;
+}
+
 //check Symbol completeness
 static bool Check_Separator(char* pCfgStr)
 {
@@ -145,31 +228,4 @@ s32 Analyse_Command(u8* src_str, s32 symbol_num, u8 symbol, u8* dest_buf)
 }
 
 
-//**************************************************
-int clear_all_nulls(char *_ptr, int _size)
-{
-        //
-        char *ptrDst;
-        char *ptrSrc;
 
-        for(int i = 0; i <= _size; i++)
-        {
-          ptrDst = &_ptr[i];
-          if( *ptrDst < ' ')
-          {
-            ptrSrc = &_ptr[i+1];
-            int rsz = (_size-i);
-            for(int j = 0; j < rsz; j++)
-            {
-              ptrDst[j] = ptrSrc[j];
-            }
-            if(rsz > 0)
-            {
-              _size--;
-              i--;
-            }
-          }
-        }
-        _ptr[_size] = 0;
-        return _size;
-}

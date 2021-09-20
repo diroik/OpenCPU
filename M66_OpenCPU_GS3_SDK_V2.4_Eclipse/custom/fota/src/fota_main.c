@@ -11,12 +11,13 @@
 
 #ifdef __OCPU_FOTA_APP__  
 Upgrade_State  g_FOTA_State = FOTA_STATE_END;
-Callback_Upgrade_State Fota_UpgardeState = NULL ;
+Callback_Upgrade_State Fota_UpgardeState = NULL;
+
 ST_FotaConfig  FotaConfig;
 ST_GprsConfig  Fota_gprsCfg;
-//u8 Fota_apn[MAX_GPRS_APN_LEN] = "internet";  //"CMNET\0";
-//u8 Fota_userid[MAX_GPRS_USER_NAME_LEN] = "";
-//u8 Fota_passwd[MAX_GPRS_PASSWORD_LEN] = "";
+u8 Fota_apn[MAX_GPRS_APN_LEN] = "CMNET\0";
+u8 Fota_userid[MAX_GPRS_USER_NAME_LEN] = "";
+u8 Fota_passwd[MAX_GPRS_PASSWORD_LEN] = "";
 
 #if UPGRADE_APP_DEBUG_ENABLE > 0
 char FOTA_DBGBuffer[DBG_BUF_LEN];
@@ -25,7 +26,7 @@ char FOTA_DBGBuffer[DBG_BUF_LEN];
 static bool Fota_Upgrade_States(Upgrade_State state, s32 fileDLPercent);
 
 extern ST_ExtWatchdogCfg* Ql_WTD_GetWDIPinCfg(void);
-extern s32 Ql_GPRS_GetPDPCntxtState(u8 contextId);
+//extern s32 Ql_GPRS_GetPDPCntxtState(u8 contextId);
 
 s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State callbcak_UpgradeState_Ind)
 {
@@ -64,6 +65,10 @@ s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State 
     }else{
         Fota_UpgardeState = Fota_Upgrade_States;    // Use the default callback
     }
+
+    Ql_strcpy(Fota_apn, 	apnCfg->apnName);
+    Ql_strcpy(Fota_userid, 	apnCfg->apnUserId);
+    Ql_strcpy(Fota_passwd, 	apnCfg->apnPasswd);
 
 #ifdef __OCPU_FOTA_BY_FTP__
     if(FTP_IsFtpServer(url))

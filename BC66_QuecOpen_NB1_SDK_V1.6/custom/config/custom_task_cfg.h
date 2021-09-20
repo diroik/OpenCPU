@@ -73,6 +73,9 @@ TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 TASK_ITEM(proc_subtask1,  subtask1_id, 1*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
+#ifdef __PROJECT_SMART_BUTTON__
+TASK_ITEM(proc_subtask1,  subtask1_id, 1*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+#endif
 
 /**
  ******* TAST CONFIG END ********

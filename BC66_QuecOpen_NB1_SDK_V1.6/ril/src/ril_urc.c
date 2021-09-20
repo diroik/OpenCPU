@@ -32,7 +32,7 @@
  ****************************************************************************/
 #include "custom_feature_def.h"
 #include "ql_stdlib.h"
-#include "ril.h "
+#include "ril.h"
 #include "ril_util.h"
 #include "ql_system.h"
 #include "ql_common.h"

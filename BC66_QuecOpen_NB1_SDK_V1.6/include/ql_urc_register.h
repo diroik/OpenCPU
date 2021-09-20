@@ -2,6 +2,8 @@
 #ifndef __QL_URC_REGISTER_H__
 #define __QL_URC_REGISTER_H__
 
+#include "ql_type.h"
+
 typedef void(*Callback_Urc_Handle)(u8* buffer,u32 length);
 
 

@@ -66,6 +66,8 @@ typedef enum {
 	PSM_ENABLE = 1
 }Enum_PSM_Mode;
 
+s32 RIL_NW_SendATCmd(char* strAT, char *outValue);
+
 /*****************************************************************
 * Function:     RIL_NW_SetCFUN
 * 

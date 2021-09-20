@@ -40,7 +40,7 @@
 /******************************************************************************
 * Macros
 ******************************************************************************/
-#define UPGRADE_APP_DEBUG_ENABLE 0
+#define UPGRADE_APP_DEBUG_ENABLE 1
 #if UPGRADE_APP_DEBUG_ENABLE > 0
 #define UPGRADE_APP_DEBUG_PORT  UART_PORT1
 #define DBG_BUF_LEN   512
@@ -49,7 +49,7 @@
 #define UPGRADE_APP_DEBUG(BUF,...) 
 #endif
 
-#define FOTA_DBG_SMPL_PRINT_EN  1
+#define FOTA_DBG_SMPL_PRINT_EN  0
 #if FOTA_DBG_SMPL_PRINT_EN > 0
 #define FOTA_DBG_PRINT_PORT  UART_PORT1
 #define FOTA_DBG_PRINT(STR)  Ql_UART_Write(FOTA_DBG_PRINT_PORT, (u8*)(STR), Ql_strlen((const char *)(STR)))

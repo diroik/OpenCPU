@@ -24,11 +24,12 @@ static u8 Ftp_userName[FTP_USERNAME_LEN] = {0x0};
 static u8 Ftp_Possword[FTP_PASSWORD_LEN] = {0x0};
 static u8 appBin_fName[FTP_BINFILENAME_LEN] = {0x0};
 
-//extern ST_FotaConfig    FotaConfig;
+extern ST_FotaConfig    FotaConfig;
 extern u8 Fota_apn[MAX_GPRS_APN_LEN];
 extern u8 Fota_userid[MAX_GPRS_USER_NAME_LEN];
 extern u8 Fota_passwd[MAX_GPRS_PASSWORD_LEN];
-//extern CallBack_Ftp_Download FtpGet_IND_CB;
+extern CallBack_Ftp_Download FtpGet_IND_CB;
+extern Callback_Upgrade_State Fota_UpgardeState;
 
 #if UPGRADE_APP_DEBUG_ENABLE > 0
 extern char FOTA_DBGBuffer[DBG_BUF_LEN];
@@ -67,6 +68,7 @@ bool FTP_IsFtpServer(u8* URL)
     char buffer[5];
     Ql_memcpy(buffer, URL, sizeof(buffer));
     Ql_StrToUpper(buffer);
+
     if(NULL == Ql_strstr(buffer, "FTP"))
     {
         return FALSE;
@@ -129,10 +131,10 @@ static void FTP_Program(void)
     FOTA_DBG_PRINT("<-- Set GPRS PDP context -->\r\n");
 
     ret = RIL_NW_SetAPN(1,(char*)Fota_apn,(char*)Fota_userid,(char*)Fota_passwd);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set GPRS APN, ret=%d -->\r\n", ret);
+    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set GPRS APN, ret=%d, apn=[%s] userid=[%s] passwd=[%s]-->\r\n", ret, Fota_apn, Fota_userid, Fota_passwd);
     FOTA_DBG_PRINT("<-- Set GPRS APN -->\r\n");
 
-    FOTA_UPGRADE_IND(UP_CONNECTING,0,retValue);
+    FOTA_UPGRADE_IND(UP_CONNECTING, 0, retValue);
     do
     {
         ret = RIL_FTP_QFTPOPEN(ServerAdder, SerPort, Ftp_userName, Ftp_Possword, 1);

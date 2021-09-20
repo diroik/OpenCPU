@@ -134,7 +134,7 @@ typedef struct{
 #endif
 
 
-#if defined( TASK_DEFINITION)
+#if defined(TASK_DEFINITION)
 #define TASK_DEFINITION_BEGIN  const ST_TaskConfig TaskConfig[] = {
 #define TASK_ITEM(EntryFunc,TaskId,TaskStackSize,P1,P2) {EntryFunc, TaskId, TaskStackSize, P1, P2},
 #define TASK_DEFINITION_END    {NULL, 0, 0, 0, 0}};

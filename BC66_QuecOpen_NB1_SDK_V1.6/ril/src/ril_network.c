@@ -224,7 +224,32 @@ static s32 ATResponse_Handler(char* line, u32 len, void* userData)
         return  RIL_ATRSP_FAILED;
     }
     
+    char *pHead = Ql_RIL_FindString(line, len, "+");//continue wait
+    if(pHead)
+    {
+    	 char *pEnd = Ql_RIL_FindString(line, len, ":");
+    	 if(pEnd)
+    	 {
+    		 s64 alen = pEnd - pHead;
+    		 if(alen > 0 && userData != NULL)
+    		 {
+    			 Ql_memcpy((char*)userData, line, len);
+    		 }
+    	 }
+    }
     return RIL_ATRSP_CONTINUE; //continue wait
+}
+
+s32 RIL_NW_SendATCmd(char* strAT, char *outValue)
+{
+	s32 retRes = 0;
+    //if (NULL == outValue)
+    //{
+    //    return RIL_AT_INVALID_PARAM;
+    //}
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, outValue, 0);
+    //if(RIL_AT_SUCCESS == retRes){}
+    return retRes;
 }
 
 s32 RIL_NW_SetCFUN(Enum_Cfun_Level cfun)
