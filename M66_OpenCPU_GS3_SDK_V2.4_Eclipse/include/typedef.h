@@ -39,9 +39,16 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define MAX_ADDRESS_LEN 64
 #define MAX_KOEFF_LEN 2
+#define AUT_PASSWORD_LEN 16
+
+#define MAX_FTP_ADDRESS_LEN 32
+#define MAX_FTP_USER_NAME_LEN 16
+#define MAX_FTP_PASSWORD_LEN  16
+#define MAX_FTP_FILENAME_LEN  16
+#define MAX_FTP_FILEPATH_LEN  16
 
 
-#define FW_VERSION "1.0"
+#define FW_VERSION "1.2"
 
 typedef enum{
     STATE_NW_GET_SIMSTATE,
@@ -111,18 +118,18 @@ typedef struct{
 }sIpSettings;
 
 typedef struct{
-    char                srvAddress[32];
-    char				filePath[16];
-    char                fileName[16];
+    char                srvAddress[MAX_FTP_ADDRESS_LEN];
+    char				filePath[MAX_FTP_FILEPATH_LEN];
+    char                fileName[MAX_FTP_FILENAME_LEN];
 
     unsigned int        srvPort;
 
-    char				usrName[16];
-    char				usrPassw[16];
+    char				usrName[MAX_FTP_USER_NAME_LEN];
+    char				usrPassw[MAX_FTP_PASSWORD_LEN];
 }sFtpSettings;
 
 typedef struct{
-	char				cmdPassw[16];
+	char				cmdPassw[AUT_PASSWORD_LEN];
 }sSecuritySettings;
 
 typedef struct{
@@ -137,6 +144,7 @@ typedef struct{
 
     u32            	secondsToReboot;
     u32            	secondsToReconnect;
+    u32				secondsToPing;
 
     u16            	serPortDataTimeout;
     u16            	gsmPortDataTimeout;
@@ -161,7 +169,6 @@ typedef struct{
     //sBuffer     serToGsmRxBuffer;
     //sBuffer     gsmToSerRxBuffer;
 
-
     s32				buttonCnt;//in 100 ms
     s32 		   	in1Cnt;
     s32				in2Cnt;
@@ -175,6 +182,9 @@ typedef struct{
 
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	pingCnt;
+    u32 			autCnt;
+
 }sProgrammData;
 
 

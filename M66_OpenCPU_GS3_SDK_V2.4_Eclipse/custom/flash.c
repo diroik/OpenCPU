@@ -34,8 +34,9 @@ static sProgrammSettings firstInitSettings =
     .serPortSettings.dataBits         	= DB_8BIT,
     .serPortSettings.flowCtrl			= FC_NONE,
 
-    .secondsToReboot = 86000,//86400s=1d
+    .secondsToReboot 	= 86000,//86400s=1d
     .secondsToReconnect = 21600,//5400s=1.5h*4=6h
+    .secondsToPing		= 60, // 300s = 5min
 
     .serPortDataTimeout = 500,//
     .gsmPortDataTimeout = 500,//

@@ -70,6 +70,8 @@ typedef struct{
 }ST_CSQ_Reponse;
 
 
+s32 RIL_NW_SendATCmd(char* strAT, char *outValue);
+
 /******************************************************************************
 * Function:     RIL_NW_GetGSMState
 *  

@@ -313,6 +313,54 @@ s32  RIL_NW_GetSignalQuality(u32* rssi, u32* ber)
     return retRes;
 }
 
+static s32 ATResponse_Handler(char* line, u32 len, void* userData)
+{
+
+    if (Ql_RIL_FindLine(line, len, "OK"))
+    {
+        return  RIL_ATRSP_SUCCESS;
+    }
+    else if (Ql_RIL_FindLine(line, len, "ERROR"))
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+    else if (Ql_RIL_FindString(line, len, "+CME ERROR"))
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+    else if (Ql_RIL_FindString(line, len, "+CMS ERROR:"))
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    char *pHead = Ql_RIL_FindString(line, len, "+");//continue wait
+    if(pHead)
+    {
+    	 char *pEnd = Ql_RIL_FindString(line, len, ":");
+    	 if(pEnd)
+    	 {
+    		 s64 alen = pEnd - pHead;
+    		 if(alen > 0 && userData != NULL)
+    		 {
+    			 Ql_memcpy((char*)userData, line, len);
+    		 }
+    	 }
+    }
+    return RIL_ATRSP_CONTINUE; //continue wait
+}
+
+s32 RIL_NW_SendATCmd(char* strAT, char *outValue)
+{
+	s32 retRes = 0;
+    //if (NULL == outValue)
+    //{
+    //    return RIL_AT_INVALID_PARAM;
+    //}
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, outValue, 0);
+    //if(RIL_AT_SUCCESS == retRes){}
+    return retRes;
+}
+
 s32  RIL_NW_SetGPRSContext(u8 foregroundContext)
 {
     s32 retRes = 0;
