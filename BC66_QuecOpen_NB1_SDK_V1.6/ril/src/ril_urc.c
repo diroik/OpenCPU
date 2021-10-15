@@ -65,13 +65,16 @@ static char DBG_Buffer[1024];
 /************************************************************************/
 /* Definition for URC param.                                  */
 /************************************************************************/
-Socket_Urc_Param_t socket_urc_param= {0,0,NULL,NULL,0,0,0,0,0};  //tcp or udp
+Socket_Urc_Param_t socket_urc_param = {0,0,NULL,NULL,0,0,0,0,0};  //tcp or udp
 
 Lwm2m_Urc_Param_t  lwm2m_urc_param = {0,0,0,-1,0,0,255,255,255};//lwm2m
 
 MQTT_Urc_Param_t   mqtt_urc_param =  {0,0,255,255,255,255,{255}}; //mqtt
 
 SSL_Urc_Param_t ssl_urc_param = {0,0,0,0,0,0,0,0,{0},0}; //ssl
+
+NIDD_Urc_Param_t nidd_urc_param = {0,0,0,{0},0};//nidd
+
 
 /************************************************************************/
 /* Declarations for URC handler.                                        */
@@ -83,6 +86,9 @@ static void OnURCHandler_InitStat(const char* strURC, void* reserved);
 
 /********************PSM***********************************************/
 static void OnURCHandler_NbiotEvent(const char* strURC, void* reserved);
+
+/********************NIDD***********************************************/
+static void OnURCHandler_NiddEvent(const char* strURC, void* reserved);
 
 /*************** ***TCP &&UDP********************************************/
 static void OnURCHandler_QIURC_OPEN(const char* strURC, void* reserved);
@@ -150,6 +156,8 @@ const static ST_URC_HDLENTRY m_SysURCHdlEntry[] = {
     {"\r\n+CFUN:",                                OnURCHandler_CFUN},
 	//PSM EVENT unsolicited response
     {"\r\n+QNBIOTEVENT:",                         OnURCHandler_NbiotEvent},
+
+    {"\r\n+QNIDD:",                                OnURCHandler_NiddEvent}
 };
 
 /****************************************************/
@@ -207,7 +215,7 @@ static void OnURCHandler_QIURC_OPEN(const char* strURC, void* reserved)
 		QSDK_Get_Str(p1,strTmp,1);
 		socket_urc_param.error_no= Ql_atoi(strTmp);
 		
-		Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_SOCKET_OPEN, &socket_urc_param);	
+		Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_SOCKET_OPEN, &socket_urc_param);
 	}
 }
 
@@ -234,7 +242,7 @@ static void OnURCHandler_SOCKET_QIURC(const char* strURC, void* reserved)
 		    QSDK_Get_Str(p1,strTmp,1);
 			socket_urc_param.connectID = Ql_atoi(strTmp);
 	
-			Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_SOCKET_CLOSE,socket_urc_param.connectID);
+			Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_SOCKET_CLOSE, socket_urc_param.connectID);
 		}
 	}
 }
@@ -342,6 +350,64 @@ static void OnURCHandler_NbiotEvent(const char* strURC, void* reserved)
 		psm_state= EXIT_PSM;
 	}
 	Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_PSM_EVENT, psm_state);
+}
+
+static void OnURCHandler_NiddEvent(const char* strURC, void* reserved)
+{
+	RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent(%s)\r\n", strURC);
+	char* p1 = NULL;
+	char* p2 = NULL;
+	char strTmp[10];
+
+	Ql_memset(&nidd_urc_param, 0x0,  sizeof(nidd_urc_param));
+	if (Ql_strstr(strURC, "\r\n+QNIDD: 0") != NULL){
+		nidd_urc_param.state = CREATE_ID_NIDD;
+	}
+	else if (Ql_strstr(strURC, "\r\n+QNIDD: 1") != NULL){
+		nidd_urc_param.state= CONNECT_NIDD;
+	}
+	else if (Ql_strstr(strURC, "\r\n+QNIDD: 2") != NULL){
+		nidd_urc_param.state= ACTIVEC_NIDD;
+	}
+	else if (Ql_strstr(strURC, "\r\n+QNIDD: 3") != NULL){
+		nidd_urc_param.state= SENDDATA_NIDD;
+	}
+	else if (Ql_strstr(strURC, "\r\n+QNIDD: 4") != NULL){
+		nidd_urc_param.state= RECVDATA_NIDD;
+
+		p1 = Ql_strstr(strURC, "+QNIDD: 4,");
+		p1 += Ql_strlen("+QNIDD: 4,");
+		p2 = Ql_strstr(p1, "\r\n");
+		*p2 = '\0';
+		if (p1 && p2){
+			RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent p1=<%s>\r\n", p1);
+
+			Ql_memset(strTmp, 0x0,	sizeof(strTmp));
+			if(QSDK_Get_Str(p1, strTmp, 0) == TRUE){
+				RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent ind0 strTmp=<%s>\r\n", strTmp);
+			}
+			Ql_memset(strTmp, 0x0,	sizeof(strTmp));
+			if(QSDK_Get_Str(p1, strTmp, 1) == TRUE){
+				RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent ind1 strTmp=<%s>\r\n", strTmp);
+				nidd_urc_param.dataLen = Ql_atoi(strTmp);
+			}
+			Ql_memset(strTmp, 0x0,	sizeof(strTmp));
+			if(QSDK_Get_Str(p1, strTmp, 2) == TRUE){
+				RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent ind2 strTmp=<%s>\r\n", strTmp);
+			}
+			if(QSDK_Get_Str(p1, nidd_urc_param.data, 3) == TRUE){
+				RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent ind3 data=<%s>\r\n", nidd_urc_param.data);
+			}
+
+		}
+
+		//RIL_URC_DEBUG(DBG_Buffer,"OnURCHandler_NiddEvent sizeof(nidd_urc_param)=%d\r\n", sizeof(nidd_urc_param));
+
+	}
+	else if (Ql_strstr(strURC, "\r\n+QNIDD: 5") != NULL){
+		nidd_urc_param.state= CLOSE_NIDD;
+	}
+	Ql_OS_SendMessage(URC_RCV_TASK_ID, MSG_ID_URC_INDICATION, URC_NIDD_EVENT, &nidd_urc_param);
 }
 
 static void OnURCHandler_DFOTA_Hander  (const char* strURC, void* reserved)

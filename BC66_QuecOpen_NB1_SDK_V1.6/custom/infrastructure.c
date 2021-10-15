@@ -6,6 +6,7 @@
  */
 
 #include "infrastructure.h"
+
 /*****************************************************************************
 * Function:
 *
@@ -53,10 +54,46 @@ int clear_all_nulls(char *_ptr, int _size)
 * Return:
 *
 *****************************************************************************/
-s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout)
+s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout, bool INV)
 {
 	s32 ret = -1;
 	s32 st = Ql_GPIO_GetLevel(*pin);
+
+	if(INV == TRUE){
+		st = st == 0 ? 1 : 0;
+	}
+
+	if(st > 0){
+		if( *cnt <  max_timeout)
+			*(cnt) += 1;
+		if(*cnt >= max_timeout){
+			*(cnt) = max_timeout;
+			ret = TRUE;
+		}
+	}
+	else{
+		if( *cnt >  0)
+			*(cnt) -= 1;
+		if(*cnt <= 0){
+			*(cnt) = 0;
+			ret = FALSE;
+		}
+	}
+	return ret;
+}
+
+/*
+s32 GetInputValueWithLed(Enum_PinName *pin, Enum_PinName *led, s32 *cnt, u32 max_timeout, bool INV)
+{
+	s32 ret = -1;
+	s32 st = Ql_GPIO_GetLevel(*pin);
+
+	if(INV == TRUE){
+		st = st == 0 ? 1 : 0;
+	}
+
+	if(led != NULL)
+		Ql_GPIO_SetLevel(*led, st);
 	if(st > 0){
 		if( *cnt <  max_timeout)
 			*(cnt) += 1;
@@ -65,12 +102,12 @@ s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout)
 	}
 	else{
 		if( *cnt >  0)
-			*(cnt) -= 1;
+			*(cnt) -= 2;//!!! проверить
 		if(*cnt <= 0)
 			ret = FALSE;
 	}
 	return ret;
-}
+}*/
 
 s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/char* pBuffer, /*[in]*/u32 bufLen)
 {
@@ -83,7 +120,7 @@ s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/char* pBuffer, /*[in]*/u32 buf
     Ql_memset(pBuffer, 0x0, bufLen);
     while (1)
     {
-        rdLen = Ql_UART_Read(port, pBuffer + rdTotalLen, bufLen - rdTotalLen);
+        rdLen = Ql_UART_Read(port, (u8*)(pBuffer + rdTotalLen), bufLen - rdTotalLen);
         if (rdLen <= 0)  // All data is read out, or Serial Port Error!
         {
             break;
@@ -100,6 +137,263 @@ s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/char* pBuffer, /*[in]*/u32 buf
 }
 
 
+char *Gsm_GetSignal(char *tmp_buff)
+{
+    u32 rssi;
+    u32 ber;
+    RIL_NW_GetSignalQuality(&rssi, &ber);
+
+    //u64 totalMS;
+    //totalMS = Ql_GetMsSincePwrOn();
+
+    Ql_sprintf(tmp_buff ,"<--signal strength: %d, BER: %d -->\r\n", rssi, ber);
+    return tmp_buff;
+}
+
+#ifdef __PROJECT_SMART_BUTTON__
+
+void reboot(sProgrammData *programmData)
+{
+	APP_DEBUG("<-- Rebooting -->\r\n");
+
+	Ql_Sleep(2000);
+	Ql_Reset(0);
+}
+
+
+char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ram, sProgrammData *programmData)//
+{
+	char *ret = NULL;
+	if(programmData->firstInit == TRUE)
+	{
+		if(Ql_strcmp(src_str, "cmd reboot") == 0)
+		{
+			reboot(programmData);
+			Ql_strcpy(tmp_buff, "\r\nrebooting\r\n");
+			ret = tmp_buff;
+		}
+		else if(Ql_strcmp(src_str, "cmd commit") == 0)
+		{
+			if(write_to_flash_settings(sett_in_ram) == TRUE)
+				Ql_strcpy(tmp_buff, "\r\ncommit ok\r\n");
+			else
+				Ql_strcpy(tmp_buff, "\r\ncommit error\r\n");
+			ret = tmp_buff;
+		}
+		if(Ql_strcmp(src_str, "cmd deep sleep mode") == 0)
+		{
+			Ql_strcpy(tmp_buff, "\r\ngo to deep sleep mode\r\n");
+			ret = tmp_buff;
+			Ql_SleepEnable();
+		}
+		else
+		{
+			char *cmdstart = "cmd set ";
+			if(Ql_strstr(src_str, cmdstart) != 0)
+			{//set
+				s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
+				if(len > 0)
+					ret = set_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+			}
+			else
+			{
+				cmdstart = "cmd get ";
+				if(Ql_strstr(src_str, cmdstart) != 0)
+				{//get
+					s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
+					if(len > 0)
+						ret = get_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
+{
+  char *ret = NULL;
+  char tbuff[50] = {0};
+
+  int len = Ql_strlen(cmd);
+  //APP_DEBUG("get_cmd len=<%d> cmd=<%s>\r\n", len, cmd);
+  if(len > 0)
+  {
+	tmp_buff[0] = 0;
+	if(Ql_strcmp(cmd, "apn") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=<");
+      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsApn);
+      Ql_strcat(tmp_buff, ">\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "user") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=<");
+      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsUser);
+      Ql_strcat(tmp_buff, ">\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "password") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=<");
+      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsPass);
+      Ql_strcat(tmp_buff, ">\r\n");
+      ret = tmp_buff;
+    }
+
+    else if(Ql_strcmp(cmd, "version") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%s", FW_VERSION);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "button timeout") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", sett_in_ram->buttonTimeout);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "timer timeout") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", sett_in_ram->timerTimeout);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "rtc interval") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", sett_in_ram->rtcInterval);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+	else if(Ql_strcmp(cmd, "signal") == 0)
+	{
+		ret = Gsm_GetSignal(tmp_buff);
+	}
+  }
+  return ret;
+}
+
+char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
+{
+  char *ret = NULL;
+  //char tbuff[50] = {0};
+  bool r = FALSE;
+  char *ch = Ql_strchr(cmdstr, '=');
+  if(ch > 0)
+  {
+	  char cmd[50] = {0};
+      char val[50] = {0};
+
+      int len = Ql_strlen(cmdstr);
+      int clen = (int)ch++ - (int)cmdstr;
+      int vlen = ((int)cmdstr + len) - (int)ch;
+
+      //APP_DEBUG("set_cmd len=<%d> clen=<%d> vlen=<%d>\r\n", len, clen, vlen);
+
+      if(clen > 0 && vlen > 0)
+      {
+    	  Ql_strncpy(cmd, cmdstr, clen);
+    	  Ql_strncpy(val, ch, vlen);
+
+    	  vlen = clear_all_nulls(val, vlen);
+    	  if(vlen <= 0)
+    		  return NULL;
+
+    	  if(Ql_strcmp(cmd, "apn") == 0)
+    	  {
+    		  if(vlen <= MAX_GPRS_APN_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->gsmSettings.gprsApn, 0, MAX_GPRS_APN_LEN);
+    			  Ql_strncpy(sett_in_ram->gsmSettings.gprsApn, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "user") == 0)
+    	  {
+    		  if(vlen < MAX_GPRS_USER_NAME_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->gsmSettings.gprsUser, 0, MAX_GPRS_USER_NAME_LEN);
+    			  Ql_strncpy(sett_in_ram->gsmSettings.gprsUser, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "password") == 0)
+    	  {
+    		  if(vlen < MAX_GPRS_PASSWORD_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->gsmSettings.gprsPass, 0, MAX_GPRS_PASSWORD_LEN);
+    			  Ql_strncpy(sett_in_ram->gsmSettings.gprsPass, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+
+    	  else if(Ql_strcmp(cmd, "button timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 100 && timeout <= 60000){ // 1 s
+    			  sett_in_ram->buttonTimeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+
+    	  else if(Ql_strcmp(cmd, "timer timeout") == 0)
+    	  {
+    		  u64 timeout = atoll(val);
+    		  if(timeout >= 10000){ // 10 s
+    			  sett_in_ram->timerTimeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "rtc interval") == 0)
+    	  {
+    		  u64 timeout = atoll(val);
+    		  if(timeout >= 60 && timeout <= 86400){ // in seconds
+    			  sett_in_ram->rtcInterval = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  if(r == TRUE){
+    		  *(--ch) = 0;
+    		  ret = get_cmd(cmdstr, tmp_buff, sett_in_ram);
+    	  }
+    	  else{
+    	      Ql_strcpy(tmp_buff, "\r\n");
+    	      Ql_strcat(tmp_buff, "cmd set ERROR!");
+    	      Ql_strcat(tmp_buff, "\r\n");
+    	      ret = tmp_buff;
+    	  }
+      }
+  }
+  return ret;
+}
+
+
+#else
+
+
 void reboot(sProgrammData *programmData)
 {
     //u64 totalMS;
@@ -107,7 +401,7 @@ void reboot(sProgrammData *programmData)
 	APP_DEBUG("<-- Rebooting -->\r\n");
 
 	programmData->needReboot = TRUE;
-	//Ql_Sleep(1000);
+	//Ql_Sleep(5000);
 	//Ql_Reset(0);
 }
 
@@ -194,7 +488,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
       int clen = (int)ch++ - (int)cmdstr;
       int vlen = ((int)cmdstr + len) - (int)ch;
 
-      APP_DEBUG("set_cmd len=<%d> clen=<%d> vlen=<%d>\r\n", len, clen, vlen);
+      //APP_DEBUG("set_cmd len=<%d> clen=<%d> vlen=<%d>\r\n", len, clen, vlen);
 
       if(clen > 0 && vlen > 0)
       {
@@ -326,7 +620,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
     	  else if(Ql_strcmp(cmd, "toreboot") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 1800){ //30 min
+    		  if(timeout >= 1800){ //30 min
     			  sett_in_ram->secondsToReboot = timeout;
     			  r = TRUE;
     		  }
@@ -334,8 +628,24 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
     	  else if(Ql_strcmp(cmd, "toreconnect") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 180){ // 3 min
+    		  if(timeout >= 180){ // 3 min
     			  sett_in_ram->secondsToReconnect = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "toping") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 60){ // 1 min
+    			  sett_in_ram->secondsToPing = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "button timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 1){ // 1 s
+    			  sett_in_ram->buttonTimeout = timeout;
     			  r = TRUE;
     		  }
     	  }
@@ -361,7 +671,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
   char tbuff[50] = {0};
 
   int len = Ql_strlen(cmd);
-  APP_DEBUG("get_cmd len=<%d> cmd=<%s>\r\n", len, cmd);
+  //APP_DEBUG("get_cmd len=<%d> cmd=<%s>\r\n", len, cmd);
   if(len > 0)
   {
 	tmp_buff[0] = 0;
@@ -463,8 +773,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
     else if(Ql_strcmp(cmd, "baudrate") == 0)
     {
 
-    	 APP_DEBUG("get_cmd cmd=<baudrate>, sett_in_ram->serPortSettings.baudrate=%d\r\n", sett_in_ram->serPortSettings.baudrate);
-
+      //APP_DEBUG("get_cmd cmd=<baudrate>, sett_in_ram->serPortSettings.baudrate=%d\r\n", sett_in_ram->serPortSettings.baudrate);
 
 	  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
       Ql_strcpy(tmp_buff, "\r\n");
@@ -520,6 +829,16 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
     else if(Ql_strcmp(cmd, "toreconnect") == 0)
     {
 	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToReconnect);
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, tbuff);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "toping") == 0)
+    {
+	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToPing);
       Ql_strcpy(tmp_buff, "\r\n");
       Ql_strcat(tmp_buff, cmd);
       Ql_strcat(tmp_buff, "=");
@@ -595,6 +914,5 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
   return ret;
 }
 
-
-
+#endif
 

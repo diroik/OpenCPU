@@ -100,7 +100,7 @@
 									<listOptionValue builtIn="false" value="TASK_DEFINITION"/>
 									<listOptionValue builtIn="false" value="__OCPU_GPIO_EXTEND_SUPPORT__"/>
 									<listOptionValue builtIn="false" value="__OCPU_RIL_SUPPORT__"/>
-									<listOptionValue builtIn="false" value="__EXAMPLE_TCPCLIENT_API__"/>
+									<listOptionValue builtIn="false" value="__PROJECT_SMART_BUTTON__"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.459165674" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>

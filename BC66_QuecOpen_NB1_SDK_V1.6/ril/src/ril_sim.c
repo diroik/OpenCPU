@@ -87,6 +87,7 @@ s32 RIL_SIM_GetSimStateByName(char* simStat, u32 len)
     }
     return ss;
 }
+
 static s32 RIL_SIM_GetSimStateByErrCode(s32 errCode)
 {
     Enum_SIMState ss;
@@ -121,7 +122,6 @@ static s32 RIL_SIM_GetSimStateByErrCode(s32 errCode)
     }
     return ss;
 }
-
 
 static s32 ATResponse_CPIN_Handler(char* line, u32 len, void* userdata)
 {
@@ -167,7 +167,6 @@ static s32 ATResponse_CPIN_Handler(char* line, u32 len, void* userdata)
 
     return RIL_ATRSP_CONTINUE; //continue wait
 }
-
 
 static s32 ATRsp_IMSI_Handler(char* line, u32 len, void* param)
 {

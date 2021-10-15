@@ -39,26 +39,26 @@
  * Enumeration for GPIO Pins available.
  ***************************************************************************/
 typedef enum{
-    PINNAME_SPI_MISO = 0,
-    PINNAME_SPI_MOSI,
-    PINNAME_SPI_SCLK,
-    PINNAME_SPI_CS,
-    PINNAME_NETLIGHT,
-    PINNAME_RI,
-    PINNAME_DCD,
-    PINNAME_CTS_AUX,
-    PINNAME_RTS_AUX,
-    PINNAME_GPIO1,
-    PINNAME_RXD_AUX,//not supports EINT
-    PINNAME_TXD_AUX,//not supports EINT
-    PINNAME_GPIO2,
-    PINNAME_GPIO3,
-    PINNAME_GPIO4,//not supports EINT
-    PINNAME_GPIO5,
-    PINNAME_RXD_DBG,//not supports EINT
-    PINNAME_TXD_DBG,//not supports EINT
+    PINNAME_SPI_MISO = 0,						//3
+    PINNAME_SPI_MOSI,							//4
+    PINNAME_SPI_SCLK,							//5
+    PINNAME_SPI_CS,								//6
+    PINNAME_NETLIGHT,							//16
+    PINNAME_RI,									//20
+    PINNAME_DCD,								//21
+    PINNAME_CTS_AUX,							//22
+    PINNAME_RTS_AUX,							//23
+    PINNAME_GPIO1,								//26
+    PINNAME_RXD_AUX,//not supports EINT			//28
+    PINNAME_TXD_AUX,//not supports EINT			//29
+    PINNAME_GPIO2,								//30
+    PINNAME_GPIO3,								//31
+    PINNAME_GPIO4,//not supports EINT			//32
+    PINNAME_GPIO5,								//33
+    PINNAME_RXD_DBG,//not supports EINT			//38
+    PINNAME_TXD_DBG,//not supports EINT			//39
 #ifdef __OCPU_GPIO_EXTEND_SUPPORT__  //only A07 or updated version supports.
-    PINNAME_GPIO0,//not supports EINT
+    PINNAME_GPIO0,//not supports EINT			//
     PINNAME_USB_MODE,//not supports EINT
     PINNAME_GPIO6,//not supports EINT
     PINNAME_GPIO7,//not supports EINT

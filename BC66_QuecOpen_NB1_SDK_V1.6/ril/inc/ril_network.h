@@ -66,6 +66,12 @@ typedef enum {
 	PSM_ENABLE = 1
 }Enum_PSM_Mode;
 
+typedef struct{
+    int st;
+    int id;
+}NIDD_CR_Reponse;
+
+
 s32 RIL_NW_SendATCmd(char* strAT, char *outValue);
 
 /*****************************************************************
@@ -220,5 +226,21 @@ s32  RIL_NW_GetCSCON(u8 *state);
 *                                      and then call Ql_RIL_Initialize to initialize RIL.
 ******************************************************************************/
 s32  RIL_NW_GetQENG(u8 mode, s32* rsp);
+
+//////////////////////////////////////////////////////////////////
+s32  Ql_PDN_Activate(u8 sid, u8 mode, char* apn, char* userName, char* pw);
+
+s32  Ql_PDN_Deactivate(u8 sid);
+
+s32  Ql_NIDD_CreateID(char* apn, char* userName, char* pw);
+
+s32  Ql_NIDD_Connect(s32 accountId);
+
+s32  Ql_NIDD_ActivateConnection(s32 niddId);
+
+s32  Ql_NIDD_SendData(s32 niddId, char* data);
+
+s32  Ql_NIDD_CloseConnection(s32 niddId);
+
 
 #endif // __RIL_NETWORK_H__

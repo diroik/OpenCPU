@@ -239,10 +239,10 @@ s32 RIL_QLwM2M_Update(Enum_Lwm2m_Update_Mode update_mode,u32 param)
 s32 RIL_LwM2M_Notify(ST_LwM2M_Param_t* lwm2m_notify_param_t,bool ack_flag,bool rai_flag)
 {
 	s32 ret = RIL_AT_SUCCESS;
-	u8* strAT  = NULL;
+	char* strAT  = NULL;
     u8 temp[20];
 
-	strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
+	strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
 	if(NULL == strAT)
 	{
        return RIL_AT_INVALID_PARAM;
@@ -308,9 +308,9 @@ s32 RIL_QLwM2M_Write_Rsp(u32 msgid, Enum_Lwm2m_Result_Code result)
 s32 RIL_QLwM2M_Observe_Rsp(ST_LwM2M_Param_t* lwm2m_observe_param_t)
 {
 	s32 ret = RIL_AT_SUCCESS;
-	u8* strAT = NULL;
+	char* strAT = NULL;
 	
-	strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
+	strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
 	if(NULL == strAT)
 	{
        return RIL_AT_INVALID_PARAM;
@@ -339,9 +339,9 @@ s32 RIL_QLwM2M_Observe_Rsp(ST_LwM2M_Param_t* lwm2m_observe_param_t)
 s32 RIL_QLwM2M_Read_Rsp(ST_LwM2M_Param_t* lwm2m_observe_param_t)
 {
 	 s32 ret = RIL_AT_SUCCESS;
-	 u8* strAT = NULL;
+	 char* strAT = NULL;
 	
-	 strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
+	 strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_lWM2M_LENGTH_MAX);
 	 if(NULL == strAT)
 	 {
        return RIL_AT_INVALID_PARAM;

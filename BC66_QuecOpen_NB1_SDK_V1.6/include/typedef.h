@@ -13,8 +13,6 @@
 #include "ql_error.h"
 #include "ql_uart.h"
 
-
-
 #define DBG_BUF_LEN   512
 static char DBG_BUFFER[DBG_BUF_LEN];
 #define DEBUG_PORT  UART_PORT0
@@ -29,8 +27,6 @@ static char DBG_BUFFER[DBG_BUF_LEN];
         Ql_UART_Write((Enum_SerialPort)(DEBUG_PORT), (u8*)(DBG_BUFFER), Ql_strlen((const char *)(DBG_BUFFER)));\
     }\
 }
-
-#define FW_VERSION "1.0"
 
 #define MAX_GPRS_USER_NAME_LEN 32
 #define MAX_GPRS_PASSWORD_LEN  32
@@ -55,6 +51,20 @@ typedef enum{
     TCP_STATE_SOC_CLOSE,
     TCP_STATE_TOTAL_NUM
 }Enum_TCPSTATE;
+
+typedef enum{
+	NIDD_STATE_WAIT = 0,
+	NIDD_CHECK_NET_REG,
+	NIDD_STATE_ACT_PDN,
+	NIDD_STATE_CREATE_ACCOUNT,
+	NIDD_STATE_CONNECT,
+	NIDD_STATE_SEND,
+	NIDD_STATE_RECV,
+	NIDD_STATE_CLOSE,
+	NIDD_STATE_CLOSE_PDN,
+	NIDD_STATE_FREE
+
+}Enum_NIDDSTATE;
 
 
 typedef union
@@ -101,6 +111,80 @@ typedef struct{
     unsigned int        srcPort;
 }sIpSettings;
 
+typedef struct{
+    char                srvAddress[32];
+    char				filePath[16];
+    char                fileName[16];
+
+    unsigned int        srvPort;
+
+    char				usrName[16];
+    char				usrPassw[16];
+}sFtpSettings;
+
+typedef struct{
+	char				cmdPassw[16];
+}sSecuritySettings;
+
+
+
+#ifdef __PROJECT_SMART_BUTTON__
+
+#define FW_VERSION "1.0"
+
+typedef struct{
+    bool        	needReboot;
+    bool 			firstInit;
+    bool			initFlash;
+    bool 			timerStart;
+    bool 			sleepEnable;
+
+    s64				timerTimeout;//in ms, mast be signed!!!
+
+    s64				buttonMaxCnt;
+    s32				buttonCnt;//in ms
+    bool 			buttonState;
+    bool 			HbuttonState;
+
+    s32				ledBlinkCnt;
+
+    bool 			needSendNidd;
+    u32				totalSeconds;
+}sProgrammData;
+
+typedef struct{
+    u16    crc;
+    u8     tmp1;
+    u8     tmp2; //tmp for aligned to 4 bytes
+
+    sGsmSettings        gsmSettings;
+    sSecuritySettings 	securitySettings;
+
+    u32					buttonTimeout;//in 100 msec
+    u64					timerTimeout;
+    u64					rtcInterval;//in sec
+
+    bool				rtcNeedCorrect;
+
+}sProgrammSettings;
+
+typedef struct{
+	u32 pid;
+	bool state;
+	bool confirm;
+	u16  rssi;
+	u16 ber;
+	u16 voltage;
+	u16 capacity;
+
+	char iccid[21];
+
+}sDataJsonParams;
+
+
+#else
+
+#define FW_VERSION "1.1"
 
 typedef struct{
     u16    crc;
@@ -114,6 +198,7 @@ typedef struct{
 
     u32            	secondsToReboot;
     u32            	secondsToReconnect;
+    u32				secondsToPing;
 
     u16            	serPortDataTimeout;
     u16            	gsmPortDataTimeout;
@@ -123,21 +208,14 @@ typedef struct{
     u8				in1Timeout;
     u8				in2Timeout;
 
-    //u16 			koeff;
+    sSecuritySettings 	securitySettings;
+    sFtpSettings		ftpSettings;
 }sProgrammSettings;
-
 
 typedef struct{
     bool        	needReboot;
     bool 			firstInit;
     bool			initFlash;
-
-    //sBuffer     gsmRxBuffer;
-    //sBuffer     serRxBuffer;
-
-    //sBuffer     serToGsmRxBuffer;
-    //sBuffer     gsmToSerRxBuffer;
-
 
     s32				buttonCnt;//in 100 ms
     s32 		   	in1Cnt;
@@ -152,10 +230,15 @@ typedef struct{
 
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	pingCnt;
 
     u64				totalMS;
 
+    s64				buttonTimerTimeout;//in 10 ms
+
 }sProgrammData;
+
+#endif
 
 
 

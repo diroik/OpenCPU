@@ -139,7 +139,7 @@ s32 RIL_MQTT_QMTCONN(Enum_ConnectID connectID, u8* clientID, u8* username, u8* p
 s32 RIL_MQTT_QMTSUB(Enum_ConnectID connectID, u32 msgId, ST_MQTT_topic_info_t* mqtt_topic_info_t)
 {
     s32 ret = RIL_AT_SUCCESS;
-    u8* strAT  = NULL;
+    char* strAT  = NULL;
     u8* info = NULL;
 	u8  temp_buffer[RIL_MQTT_TOPIC_MAX];
 	u8 i = 0;
@@ -155,7 +155,7 @@ s32 RIL_MQTT_QMTSUB(Enum_ConnectID connectID, u32 msgId, ST_MQTT_topic_info_t* m
 			return RIL_AT_INVALID_PARAM;
 		}
 	}
-	strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
+	strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
 	if(NULL == strAT)
 	{
        return RIL_AT_INVALID_PARAM;
@@ -227,9 +227,9 @@ s32 RIL_MQTT_QMTSUB(Enum_ConnectID connectID, u32 msgId, ST_MQTT_topic_info_t* m
 s32 RIL_MQTT_QMTPUB(Enum_ConnectID connectID, u32 msgId, Enum_Qos qos, u8 retain, u8* topic, u8* message)
 {
     s32 ret = RIL_AT_SUCCESS;
-    u8* strAT  = NULL;
+    char* strAT  = NULL;
 
-	strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
+	strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
 	if(NULL == strAT)
 	{
        return RIL_AT_INVALID_PARAM;
@@ -253,7 +253,7 @@ s32 RIL_MQTT_QMTPUB(Enum_ConnectID connectID, u32 msgId, Enum_Qos qos, u8 retain
 s32 RIL_MQTT_QMTUNS(Enum_ConnectID connectID, u32 msgId,ST_MQTT_topic_info_t* mqtt_topic_info_t)
 {
     s32 ret = RIL_AT_SUCCESS;
-    u8* strAT  = NULL;
+    char* strAT  = NULL;
     u8* info = NULL;
 	u8  temp_buffer[RIL_MQTT_TOPIC_MAX];
 	u8 i = 0;
@@ -263,7 +263,7 @@ s32 RIL_MQTT_QMTUNS(Enum_ConnectID connectID, u32 msgId,ST_MQTT_topic_info_t* mq
 		return RIL_AT_INVALID_PARAM;
 	}
 	
-	strAT = (u8*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
+	strAT = (char*)Ql_MEM_Alloc(sizeof(u8)*RIL_MQTT_LENGTH_MAX);
 	if(NULL == strAT)
 	{
        return RIL_AT_INVALID_PARAM;

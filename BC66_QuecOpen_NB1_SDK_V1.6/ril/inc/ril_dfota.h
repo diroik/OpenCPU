@@ -72,7 +72,7 @@ typedef enum{
 *                0 indicates this function successes.
 *               others indicates this function failure.
 *****************************************************************/
-s32 RIL_DFOTA_Upgrade(u8* url);
+s32 RIL_DFOTA_Upgrade(char* url);
 
 /*****************************************************************
 * Function:     DFOTA_Analysis
@@ -96,7 +96,7 @@ s32 RIL_DFOTA_Upgrade(u8* url);
 * Return:
 *                void
 *****************************************************************/
-void DFOTA_Analysis(u8* buffer,Dfota_Upgrade_State* upgrade_state, s32* errno);
+void DFOTA_Analysis(char* buffer, Dfota_Upgrade_State* upgrade_state, s32* errno);
 
 /*****************************************************************
 * Function:     Dfota_Upgrade_States

@@ -117,7 +117,7 @@ void proc_main_task(s32 taskId)
     APP_DEBUG("\r\n<--QuecOpen: psm_enit function demo-->\r\n"); 
 
     //rtc register
-    ret = Ql_Psm_Eint_Register(PSM_EINT_handler,&m_param);
+    ret = Ql_Psm_Eint_Register(PSM_EINT_handler, &m_param);
     if(ret != QL_RET_OK)
     {
 	    APP_DEBUG("\r\n<--psm_eint register failed!ret(%d)-->\r\n",ret);          
@@ -143,6 +143,8 @@ void proc_main_task(s32 taskId)
     			 {
 	                 APP_DEBUG("\r\n<--The module wake up from deep sleep mode by psm_eint-->\r\n"); 
 					 PSM_EINT_Flag = FALSE;
+
+					 APP_DEBUG("\r\n<--PSM_EINT_handler in proc_main_task param=(%d)->\r\n", m_param);
     			 }
     			 else 
     			 {
@@ -157,7 +159,7 @@ void proc_main_task(s32 taskId)
                      APP_DEBUG("<-- EGPRS Network Status:%d -->\r\n", msg.param2);
                      break;  
     			 case URC_PSM_EVENT:
-				 	 if(ENTER_PSM== msg.param2)
+				 	 if(ENTER_PSM == msg.param2)
 				 	 {
                         APP_DEBUG("<-- ENTER PSM-->\r\n");//The modem enter PSM mode.
 				 	 }
@@ -179,6 +181,9 @@ void proc_main_task(s32 taskId)
 void PSM_EINT_handler(void* param)
 {
 	PSM_EINT_Flag = TRUE;
+
+	//*((s32*)param) +=1;
+	//APP_DEBUG("\r\n<--PSM_EINT_handler->\r\n");
 }
 
 

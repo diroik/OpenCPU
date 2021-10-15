@@ -8,6 +8,30 @@
 #include "flash.h"
 #include "ql_flash.h"
 
+#ifdef __PROJECT_SMART_BUTTON__
+static sProgrammSettings firstInitSettings =
+{
+    .crc        = 0xAA,
+    .tmp1       = 0xFF,
+    .tmp2       = 0xFF,
+
+    .gsmSettings.gprsApn = "internet",
+    .gsmSettings.gprsUser = "",
+    .gsmSettings.gprsPass = "",
+
+    .securitySettings.cmdPassw = "12345678",
+
+    .buttonTimeout  = 1000,
+    .timerTimeout   = 60000,
+    .rtcInterval	= 300,
+
+
+    .rtcNeedCorrect = FALSE
+
+};
+#else
+
+
 static sProgrammSettings firstInitSettings =
 {
     .crc        = 0xAA,
@@ -35,8 +59,9 @@ static sProgrammSettings firstInitSettings =
     .serPortSettings.dataBits         	= DB_8BIT,
     .serPortSettings.flowCtrl			= FC_NONE,
 
-    .secondsToReboot = 86000,//86400s=1d
+    .secondsToReboot 	= 86000,//86400s=1d
     .secondsToReconnect = 21600,//5400s=1.5h*4=6h
+    .secondsToPing 		= 60, // 300s = 5min
 
     .serPortDataTimeout = 500,//
     .gsmPortDataTimeout = 500,//
@@ -45,8 +70,18 @@ static sProgrammSettings firstInitSettings =
     .in1Timeout	   = 3,
     .in2Timeout	   = 3,
 
-    //.koeff = 1000
+    .securitySettings.cmdPassw = "12345678",
+
+    .ftpSettings.srvAddress = "94.228.255.152",
+    .ftpSettings.srvPort = 21,
+    .ftpSettings.filePath = "/M66/",
+    .ftpSettings.fileName = "APPGS3MDM32.bin",
+    .ftpSettings.usrName = "firmware",
+    .ftpSettings.usrPassw = "123qwe45RTY"
 };
+
+#endif
+
 
 
 u16 calc_settings_crc(sProgrammSettings *sett)
@@ -84,12 +119,11 @@ bool init_flash(sProgrammSettings *sett_in_ram)
   sProgrammSettings tmp;
   u8 index = 1;//2048
   u32 len = sizeof(sProgrammSettings);
-
-  APP_DEBUG("<--init_flash need len=%d index=%d, start Ql_Flash_Read-->\r\n", len, index);
+  //APP_DEBUG("<--init_flash need len=%d index=%d, start Ql_Flash_Read-->\r\n", len, index);
 
   s32 r = Ql_Flash_Read(index, 0, (u8*)&tmp, len);
 
-  APP_DEBUG("<--init_flash read len (r)=%d need len (len)=%d-->\r\n", r, len);
+  //APP_DEBUG("<--init_flash read len (r)=%d need len (len)=%d-->\r\n", r, len);
 
   if(r == 0 )
   {
@@ -100,7 +134,7 @@ bool init_flash(sProgrammSettings *sett_in_ram)
 	  }
 	  else
 	  {//check crc
-		  u16 crc = calc_settings_crc((sProgrammSettings *)&tmp);
+		  u16 crc = calc_settings_crc(&tmp);
 		  APP_DEBUG("<--init_flash calc_settings_crc crc=%d tmp->crc=%d-->\r\n", crc, tmp.crc);
 		  if(tmp.crc == crc)
 		  {

@@ -37,7 +37,7 @@
 #include "ql_type.h"
 
 /**************************************************************
- * User RTC  ID Definition
+ * User PSM EINT  ID Definition
  **************************************************************/
 typedef void (*Callback_Psm_Eint_Func)(void *user_data);
 

@@ -55,11 +55,11 @@ static char DBG_Buffer[1024];
 #endif
 
 
-s32 RIL_DFOTA_Upgrade(u8* url)
+s32 RIL_DFOTA_Upgrade(char* url)
 {
 
    s32 ret = RIL_AT_SUCCESS;
-   u8 strAT[255] ;
+   char strAT[255] ;
 
     Ql_memset(strAT,0, sizeof(strAT));
     Ql_sprintf(strAT,"AT+QFOTADL=\"%s\"\n",url);
@@ -74,12 +74,12 @@ s32 RIL_DFOTA_Upgrade(u8* url)
     return ret;
 }
 
-void DFOTA_Analysis(u8* buffer,Dfota_Upgrade_State* upgrade_state, s32* dfota_errno)
+void DFOTA_Analysis(char* buffer,Dfota_Upgrade_State* upgrade_state, s32* dfota_errno)
 {
-	u8 strTmp[200];
+	char strTmp[200];
 	 
 	Ql_memset(strTmp, 0x0,	sizeof(strTmp));
-	QSDK_Get_Str(buffer,strTmp,1);
+	QSDK_Get_Str(buffer, strTmp, 1);
 	
 	if(Ql_memcmp(strTmp,"\"HTTPSTART\"",Ql_strlen("\"HTTPSTART\"")) == 0)
 	{

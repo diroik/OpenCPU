@@ -10,7 +10,6 @@
 
 #include "ql_type.h"
 #include "ql_trace.h"
-//#include "ril_system.h"
 #include "typedef.h"
 
  u16 	calc_settings_crc(sProgrammSettings *sett);

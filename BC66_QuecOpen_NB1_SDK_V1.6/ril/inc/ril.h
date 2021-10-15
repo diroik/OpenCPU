@@ -78,8 +78,9 @@ typedef enum {
 	URC_SSL_OPEN,				// Indication for open a ssl socket to connect to a remote server.
 	URC_SSL_CLOSE,				// Indication for close a ssl connection.
 	URC_SSL_DISC,				// Indication for SSL connection disconnected
+	URC_NIDD_EVENT,
 
-    URC_SYS_END = 100, 
+    URC_SYS_END = 100,
     /*****************************************/
     /* System URC definition end             */
     /*****************************************/
@@ -200,6 +201,16 @@ typedef struct{
   u8 param_item[20];	//optional parameters for SSL functionalities.
   s8 err;				//the result of connection. 0 indicates  successful operation and other value indicates an error.
 }SSL_Urc_Param_t;
+
+
+typedef struct{
+	s32 accauntId;
+	s32 niddId;
+	s32 dataLen;
+	char data[512];
+	u8 state;
+}NIDD_Urc_Param_t;
+
 
 /******************************************************************************
 * Function:     Ql_RIL_Initialize

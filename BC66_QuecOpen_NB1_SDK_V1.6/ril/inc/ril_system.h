@@ -47,6 +47,15 @@ typedef enum {
     RAI_UPLOAD_WITH_ACK
 }Enum_RAI_Config;
 
+typedef enum {
+	NON_NIDD = 0,
+    CREATE_ID_NIDD 	= 1,
+    CONNECT_NIDD  	= 2,
+    ACTIVEC_NIDD 	= 3,
+    SENDDATA_NIDD 	= 4,
+    RECVDATA_NIDD 	= 5,
+    CLOSE_NIDD		= 6
+}Enum_NIDD_State;
 
 typedef struct
 {
@@ -54,6 +63,24 @@ typedef struct
     s32 voltage;
 }ST_SysPower;
 
+
+/*****************************************************************
+* Function:     RIL_GetPowerSupply
+*
+* Description:
+*               This function queries the battery balance, and the battery voltage.
+*
+* Parameters:
+*               capacity:
+*                   [out] battery balance, a percent, ranges from 1 to 100.
+*
+*               voltage:
+*                   [out] battery voltage, unit in mV
+* Return:
+*               QL_RET_OK, indicates this function successes.
+*		   -1, fail.
+*****************************************************************/
+s32 RIL_GetPowerSupply(u32* capacity, u32* voltage);
 
 /*****************************************************************
 * Function:     RIL_GetFirmwareVer
@@ -137,7 +164,6 @@ s32 RIL_QNbiotRai(Enum_RAI_Config rai);
 *****************************************************************/
 s32 RIL_QNbiotEvent_Enable(u32 event);
 
-
 /*****************************************************************
 * Function:     RIL_QNbiotEvent_Enable 
 * 
@@ -157,7 +183,6 @@ s32 RIL_QNbiotEvent_Enable(u32 event);
 *                                      and then call Ql_RIL_Initialize to initialize RIL.
 *****************************************************************/
 s32 RIL_QNbiotEvent_Disable(u32 event);
-
 
 /*****************************************************************
 * Function:     QSDK_Get_Str 

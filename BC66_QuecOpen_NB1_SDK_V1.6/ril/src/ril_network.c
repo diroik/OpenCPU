@@ -39,6 +39,7 @@
 #include "ql_error.h"
 #include "ql_system.h"
 #include "ql_trace.h"
+#include "typedef.h"
 
 #ifdef __OCPU_RIL_SUPPORT__
 
@@ -74,7 +75,7 @@ static s32 ATResponse_CEREG_Handler(char* line, u32 len, void* userdata)
     {
         s32 n = 0;
         s32 *state = (s32 *)userdata;
-        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&n,state);
+        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&n, state);
         return  RIL_ATRSP_CONTINUE;
     }
 
@@ -134,6 +135,63 @@ static s32 ATResponse_CSQ_Handler(char* line, u32 len, void* param)
     }
     return RIL_ATRSP_CONTINUE; //continue wait
 }
+
+/******************************************************************************
+* Function:     ATResponse_CSQ_Handler
+*
+* Description:
+*               This function is used to deal with the response of the AT+CSQ command.
+*
+* Parameters:
+*                line:
+*                    [in]The address of the string.
+*                len:
+*                    [in]The length of the string.
+*                userdata:
+*                    [out]Used to transfer the customer's parameter.
+*
+* Return:
+*               RIL_ATRSP_SUCCESS, indicates AT executed successfully..
+*               RIL_ATRSP_FAILED, indicates AT executed failed.
+*               RIL_ATRSP_CONTINUE,indicates continue to wait for the response
+*               of the AT command.
+* Notes:
+*               1.Can't send any new AT commands in this function.
+*               2.RIL handle the AT response line by line, so this function may
+*                 be called multiple times.
+******************************************************************************/
+static s32 ATResponse_CSQ_Handler_new(char* line, u32 len, void* userdata)
+{
+    ST_CSQ_Reponse *CSQ_Reponse = (ST_CSQ_Reponse*)userdata;
+
+    char *head = Ql_RIL_FindString(line, len, "+CSQ:"); //continue wait
+    if(head)
+    {
+        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&CSQ_Reponse->rssi, &CSQ_Reponse->ber);
+        return  RIL_ATRSP_CONTINUE;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_SUCCESS;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    return RIL_ATRSP_CONTINUE; //continue wait
+}
+
 
 static s32 ATResponse_CSCON_Handler(char* line, u32 len, void* userdata)
 {
@@ -242,7 +300,7 @@ static s32 ATResponse_Handler(char* line, u32 len, void* userData)
 
 s32 RIL_NW_SendATCmd(char* strAT, char *outValue)
 {
-	s32 retRes = 0;
+	s32 retRes = -1;
     //if (NULL == outValue)
     //{
     //    return RIL_AT_INVALID_PARAM;
@@ -306,7 +364,7 @@ s32  RIL_NW_GetSignalQuality(u32* rssi, u32* ber)
     char strAT[] = "AT+CSQ\0";
     ST_CSQ_Reponse pCSQ_Reponse;
     Ql_memset(&pCSQ_Reponse,0, sizeof(pCSQ_Reponse));
-    retRes = Ql_RIL_SendATCmd(strAT,Ql_strlen(strAT), ATResponse_CSQ_Handler,(void*)&pCSQ_Reponse,0);
+    retRes = Ql_RIL_SendATCmd(strAT,Ql_strlen(strAT), ATResponse_CSQ_Handler_new, (void*)&pCSQ_Reponse, 0);
     if(RIL_AT_SUCCESS == retRes)
     {
        *rssi = pCSQ_Reponse.rssi;
@@ -356,6 +414,188 @@ s32  RIL_NW_GetQENG(u8 mode, s32* rsp)
 		return Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_QENG_Handler, rsp, 0);
 	}
 }
+
+///////////////////////////////////////////////////////////////////////
+static s32 ATResponse_NIDD_Handler(char* line, u32 len, void* userdata)
+{
+
+    char *head = Ql_RIL_FindString(line, len, "+QNIDD:"); //continue wait
+    if(head)
+    {
+    	NIDD_CR_Reponse *response = (NIDD_CR_Reponse*)userdata;
+
+    	//APP_DEBUG("ATResponse_NIDD_Handler head=<%s>\r\n", head);
+        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&response->st, &response->id);
+        return  RIL_ATRSP_CONTINUE;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_SUCCESS;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    return RIL_ATRSP_CONTINUE; //continue wait
+}
+
+s32  Ql_PDN_Activate(u8 sid, u8 mode, char* apn, char* userName, char* pw)
+{
+    s32 retRes = 0;
+    char strAT[150] ;
+    //char tmp_buff[50] = {0};
+
+    Ql_memset(strAT,0x00, sizeof(strAT));
+
+    Ql_sprintf(strAT,"AT+QGACT=%d,%d,", sid, mode);
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, apn);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, userName);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, pw);
+    Ql_strcat(strAT, "\"");
+
+    //u32 cmdLen 			= Ql_strlen(strAT);
+    //APP_DEBUG("Ql_PDN_Activate strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
+    //retRes = RIL_NW_SendATCmd(strAT, tmp_buff);
+
+    //APP_DEBUG("Ql_PDN_Activate retRes=<%d>, tmp_buff=<%s>\r\n", retRes, tmp_buff);
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    return retRes;
+}
+
+s32  Ql_PDN_Deactivate(u8 sid)
+{
+    s32 retRes = 0;
+    char strAT[30] ;
+
+    Ql_memset(strAT,0x00, sizeof(strAT));
+    Ql_sprintf(strAT,"AT+QGACT=0,%d", sid);
+    //APP_DEBUG("Ql_PDN_Deactivate strAT=<%s>\r\n", strAT);
+
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);
+    return retRes;
+}
+
+s32  Ql_NIDD_CreateID(char* apn, char* userName, char* pw)
+{
+    s32 retRes 			= -1;
+    char strAT[150] 	= {0};
+
+    Ql_memset(strAT, 0x00, sizeof(strAT));
+
+    Ql_strcpy(strAT, "AT+QNIDD=0,");
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, apn);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, userName);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, pw);
+    Ql_strcat(strAT, "\"");
+
+
+    NIDD_CR_Reponse response;
+    Ql_memset(&response,0, sizeof(response));
+
+    u32 cmdLen 			= Ql_strlen(strAT);
+    //APP_DEBUG("Ql_NIDD_CreateID strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
+    s32 ret = Ql_RIL_SendATCmd(strAT, cmdLen, ATResponse_NIDD_Handler, (void*)&response, 0);
+
+    if(ret == RIL_AT_SUCCESS)
+    {
+    	retRes = response.id;
+    }
+    return retRes;
+}
+
+s32  Ql_NIDD_Connect(s32 accountId)
+{
+    s32 retRes = -1;
+    char strAT[30] ;
+
+    Ql_memset(strAT,0x00, sizeof(strAT));
+    Ql_sprintf(strAT,"AT+QNIDD=1,%d", accountId);
+    //APP_DEBUG("Ql_NIDD_Connect strAT=<%s>\r\n", strAT);
+    NIDD_CR_Reponse response;
+    Ql_memset(&response,0, sizeof(response));
+    s32 ret = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_NIDD_Handler, (void*)&response, 0);
+    //APP_DEBUG("Ql_NIDD_Connect ret=<%d>\r\n", ret);
+    if(ret == RIL_AT_SUCCESS)
+    {
+    	//APP_DEBUG("Ql_NIDD_CreateID response id=<%d>, st=<%d>\r\n", response.id, response.st);
+    	retRes = response.id;
+    }
+    return retRes;
+}
+
+s32  Ql_NIDD_ActivateConnection(s32 niddId)
+{
+    s32 retRes = 0;
+    char strAT[30] ;
+    Ql_memset(strAT,0x00, sizeof(strAT));
+    Ql_sprintf(strAT,"AT+QNIDD=2,%d", niddId);
+    //APP_DEBUG("Ql_NIDD_ActivateConnection strAT=<%s>\r\n", strAT);
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);
+    return retRes;
+}
+
+s32  Ql_NIDD_SendData(s32 niddId, char* data)
+{
+    s32 retRes = -1;
+    char strAT[512] = {0};
+    //char tmp_buff[50] = {0};
+    u32 len = Ql_strlen(data);
+
+    if(data == NULL || (len+15) >= sizeof(strAT) || len == 0)
+    {
+    	return RIL_AT_INVALID_PARAM;
+    }
+    Ql_memset(strAT,0x00, sizeof(strAT));
+
+    Ql_sprintf(strAT,"AT+QNIDD=3,%d,", niddId);
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, data);
+    Ql_strcat(strAT, "\"");
+
+    //APP_DEBUG("Ql_NIDD_SendData strAT=<%s>\r\n", strAT);
+
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);
+    return retRes;
+}
+
+
+s32  Ql_NIDD_CloseConnection(s32 niddId)
+{
+    s32 retRes = 0;
+    char strAT[30] ;
+
+    Ql_memset(strAT,0x00, sizeof(strAT));
+    Ql_sprintf(strAT,"AT+QNIDD=5,%d", niddId);
+
+
+    //APP_DEBUG("Ql_NIDD_CloseConnection strAT=<%s>\r\n", strAT);
+
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);
+    return retRes;
+}
+
+
 
 #endif  //__OCPU_RIL_SUPPORT__
 

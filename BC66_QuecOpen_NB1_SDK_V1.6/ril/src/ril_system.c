@@ -43,6 +43,7 @@
 #include "ql_uart.h"
 #include "ql_type.h"
 #include "ril_lwm2m.h"
+#include "typedef.h"
 
 #ifdef __OCPU_RIL_SUPPORT__ 
 
@@ -55,7 +56,8 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
     char *head = Ql_RIL_FindString(line, len, "+CBC:"); //continue wait
     if(head)
     {
-        char strTmp[10];
+    	//APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", head);
+        /*char strTmp[10];
         char *p1,*p2;
         p1 = Ql_strstr(head, ":");
         p2 = Ql_strstr(p1 + 1, ",");
@@ -68,6 +70,7 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
                 Ql_memset(strTmp, 0x0, sizeof(strTmp));
                 Ql_memcpy(strTmp, p1 + 1, p2 - p1 - 1);
                 PowerSupply->capacity = Ql_atoi(strTmp);
+
                 p1 = p2;
                 p2 = Ql_strstr(p1 + 1, "\r\n");
                 if (p1 && p2)
@@ -77,8 +80,12 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
                     PowerSupply->voltage = Ql_atoi(strTmp);
                 }
             }
-        }
-        //    Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&PowerSupply->capacity,&PowerSupply->voltage);
+        }*/
+    	s32 n = 0;
+        Ql_sscanf(head,"%*[^ ]%d,%d,%d,%[^\r\n]", &n, &PowerSupply->capacity, &PowerSupply->voltage);
+        //APP_DEBUG("Power_ATResponse_Hanlder n=<%d>, capacity=<%d>, voltage=<%d>\r\n", n, PowerSupply->capacity, PowerSupply->voltage);
+
+
         return  RIL_ATRSP_CONTINUE;
     }
 
@@ -103,38 +110,6 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
     return RIL_ATRSP_CONTINUE; //continue wait
 
 }
-
-
-/*****************************************************************
-* Function:     RIL_GetPowerSupply
-*
-* Description:
-*               This function queries the battery balance, and the battery voltage.
-*
-* Parameters:
-*               capacity:
-*                   [out] battery balance, a percent, ranges from 1 to 100.
-*
-*               voltage:
-*                   [out] battery voltage, unit in mV
-* Return:
-*               QL_RET_OK, indicates this function successes.
-*		   -1, fail.
-*****************************************************************/
-s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
-{
-    s32 ret;
-    ST_SysPower PowerSupply;
-
-    ret = Ql_RIL_SendATCmd("AT+CBC", 6, Power_ATResponse_Hanlder, (void *)&PowerSupply, 0);
-    if (RIL_AT_SUCCESS == ret)
-    {
-        *capacity = PowerSupply.capacity;
-        *voltage  = PowerSupply.voltage;
-    }
-    return ret;
-}
-
 
 static s32 ATRsp_Firmware_Handler(char* line, u32 len, void* param)
 {
@@ -230,6 +205,41 @@ static s32 ATResponse_Handler(char* line, u32 len, void* userData)
     
     return RIL_ATRSP_CONTINUE; //continue wait
 }
+
+
+
+/*****************************************************************
+* Function:     RIL_GetPowerSupply
+*
+* Description:
+*               This function queries the battery balance, and the battery voltage.
+*
+* Parameters:
+*               capacity:
+*                   [out] battery balance, a percent, ranges from 1 to 100.
+*
+*               voltage:
+*                   [out] battery voltage, unit in mV
+* Return:
+*               QL_RET_OK, indicates this function successes.
+*		   -1, fail.
+*****************************************************************/
+s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
+{
+    s32 ret;
+    ST_SysPower PowerSupply;
+
+    char strAT[]="AT+CBC\0";
+
+    ret = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), Power_ATResponse_Hanlder, (void *)&PowerSupply, 0);
+    if (RIL_AT_SUCCESS == ret)
+    {
+        *capacity = PowerSupply.capacity;
+        *voltage  = PowerSupply.voltage;
+    }
+    return ret;
+}
+
 
 s32 RIL_GetFirmwareVer(char* version)
 {
