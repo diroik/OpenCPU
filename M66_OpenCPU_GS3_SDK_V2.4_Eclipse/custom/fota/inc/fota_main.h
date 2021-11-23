@@ -36,6 +36,7 @@
 #include "ql_type.h"
 #include "ql_uart.h"
 #include "ql_gpio.h"
+#include "ql_gprs.h"
 
 /******************************************************************************
 * Macros

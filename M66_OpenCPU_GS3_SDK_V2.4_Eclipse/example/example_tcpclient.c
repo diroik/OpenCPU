@@ -81,44 +81,7 @@
 ******************************************************************/
 #include "typedef.h"
 #include "flash.h"
-
-/***********************************************************************
- * SMS CONSTANT DEFINITIONS
-************************************************************************/
-#define CON_SMS_BUF_MAX_CNT   (1)
-#define CON_SMS_SEG_MAX_CHAR  (160)
-#define CON_SMS_SEG_MAX_BYTE  (4 * CON_SMS_SEG_MAX_CHAR)
-#define CON_SMS_MAX_SEG       (7)
-
-/***********************************************************************
- * SMS STRUCT TYPE DEFINITIONS
-************************************************************************/
-typedef struct
-{
-    u8 aData[CON_SMS_SEG_MAX_BYTE];
-    u16 uLen;
-} ConSMSSegStruct;
-
-typedef struct
-{
-    u16 uMsgRef;
-    u8 uMsgTot;
-
-    ConSMSSegStruct asSeg[CON_SMS_MAX_SEG];
-    bool abSegValid[CON_SMS_MAX_SEG];
-} ConSMSStruct;
-/***********************************************************************
- * SMS FUNCTION DECLARATIONS
-************************************************************************/
-static bool ConSMSBuf_IsIntact(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx,ST_RIL_SMS_Con *pCon);
-static bool ConSMSBuf_AddSeg(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx,ST_RIL_SMS_Con *pCon,u8 *pData,u16 uLen);
-static s8 	ConSMSBuf_GetIndex(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,ST_RIL_SMS_Con *pCon);
-static bool ConSMSBuf_ResetCtx(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx);
-static bool SMS_Initialize(void);
-/***********************************************************************
- * SMS GLOBAL DATA DEFINITIONS
-************************************************************************/
-ConSMSStruct g_asConSMSBuf[CON_SMS_BUF_MAX_CNT];
+#include "infrastructure.h"
 
 /*****************************************************************
 * UART Param
@@ -167,14 +130,34 @@ static s32 m_remain_len = 0;     // record the remaining number of bytes in send
 static char *m_pCurrentPos = NULL; 
 
 /*****************************************************************
+* Local time param
+******************************************************************/
+ST_Time time;
+ST_Time* pTime = NULL;
+u32 totalSeconds = 0;
+
+/*****************************************************************
 * ADC Param
 ******************************************************************/
 static u32 ADC_CustomParam = 1;
+
+/***********************************************************************
+ * SMS FUNCTION DECLARATIONS
+************************************************************************/
+static bool ConSMSBuf_IsIntact(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx,ST_RIL_SMS_Con *pCon);
+static bool ConSMSBuf_AddSeg(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx,ST_RIL_SMS_Con *pCon,u8 *pData,u16 uLen);
+static s8 	ConSMSBuf_GetIndex(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,ST_RIL_SMS_Con *pCon);
+static bool ConSMSBuf_ResetCtx(ConSMSStruct *pCSBuf,u8 uCSMaxCnt,u8 uIdx);
+static bool SMS_Initialize(void);
+/***********************************************************************
+ * SMS GLOBAL DATA DEFINITIONS
+************************************************************************/
+ConSMSStruct g_asConSMSBuf[CON_SMS_BUF_MAX_CNT];
+
+
 /*****************************************************************
 * Other Param
 ******************************************************************/
-#define AUT_TIMEOUT 300
-
 static u8 m_tcp_state = STATE_NW_GET_SIMSTATE;
 
 static sProgrammData programmData =
@@ -189,23 +172,26 @@ static sProgrammData programmData =
     .in1Cnt 		= 0,
     .in2Cnt 		= 0,
 
+    .totalSeconds 	= 0,
     .buttonState 	= FALSE,
     .HbuttonState	= FALSE,
     .in1State		= FALSE,
     .Hin1State		= FALSE,
     .in2State		= FALSE,
     .Hin2State		= FALSE,
+    .tempValue 		= 0.0,
+    .autCnt			= 0,
+    .rssi			= 0,
+    .ber 			= 0
 
-    .autCnt			= 0
 };
-
 static sProgrammSettings programmSettings;
 
 static s32 				led_cnt = 5;
 static Enum_PinName  	led_pin 	= PINNAME_PCM_CLK;//30
 static Enum_PinName  	button_pin 	= PINNAME_PCM_SYNC;//31
-static Enum_PinName  	in1_pin 	= PINNAME_PCM_IN;//32
-static Enum_PinName  	in2_pin 	= PINNAME_PCM_OUT;//33
+static Enum_PinName  	in1_pin 	= PINNAME_PCM_OUT;//33
+static Enum_PinName  	in2_pin 	= PINNAME_PCM_IN;//32
 
 /*****************************************************************
 * GPRS and socket callback function
@@ -233,10 +219,12 @@ static ST_SOC_Callback      callback_soc_func=
     callback_socket_read,    
     callback_socket_write
 };
+
 /*****************************************************************
 * PowerKey callback function
 ******************************************************************/
 static void Callback_PowerKey_Hdlr(s32 param1, s32 param2);
+
 /*****************************************************************
 * uart callback function
 ******************************************************************/
@@ -248,10 +236,12 @@ static void CallBack_UART_Hdlr(Enum_SerialPort port, Enum_UARTEventType msg, boo
 static void gsm_callback_onTimer(u32 timerId, void* param);
 static void wdt_callback_onTimer(u32 timerId, void* param);
 static void gpio_callback_onTimer(u32 timerId, void* param);
+
 /*****************************************************************
 * ADC callback function
 ******************************************************************/
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam);
+
 /*****************************************************************
 * other subroutines
 ******************************************************************/
@@ -262,11 +252,7 @@ static void InitGPRS(void);
 static void InitGPIO(void);
 static void InitADC(void);
 
-//extern s32 Analyse_Command(u8* src_str,s32 symbol_num,u8 symbol, u8* dest_buf);
-extern int clear_all_nulls(char *_ptr, int _size);
-//extern int HexToByte(char *ptr);
-extern void ByteToHex(char *HEX, char BYTE);
-
+static bool GetLocalTime(void);
 static s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/u8* pBuffer, /*[in]*/u32 bufLen);
 static void proc_handle(Enum_SerialPort port, char* pData,s32 len);
 static void checkErr_AckNumber(s32 err_code);
@@ -280,7 +266,6 @@ static char *Gsm_GetSignal(char *tmp_buff);
 static char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
 static char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram);
 static char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram);
-static s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout);
 
 /*****************************************************************
 * other system tasks
@@ -297,12 +282,12 @@ void proc_main_task(s32 taskId)
     Ql_UART_Open(UART_PORT1, 115200, FC_NONE);
     Ql_UART_Open(UART_PORT2, 115200, FC_NONE);
 
-    Ql_Debug_Trace("<-- proc_main_task: enter ->\r\n");
+    //Ql_Debug_Trace("<-- proc_main_task: enter ->\r\n");
 
     APP_DEBUG("<--OpenCPU: Starting Application.-->\r\n");
     
 
-    InitGPRS();
+    //InitGPRS();
 
 
     while(TRUE)
@@ -337,7 +322,8 @@ void proc_main_task(s32 taskId)
                     APP_DEBUG("\r\n<-- SMS module is ready -->\r\n");
                     APP_DEBUG("\r\n<-- Initialize SMS-related options -->\r\n");
                     iResult = SMS_Initialize();
-                    if (!iResult) APP_DEBUG("Fail to initialize SMS\r\n");
+                    if (!iResult)
+                    	APP_DEBUG("Fail to initialize SMS\r\n");
                 }
                 break;
 
@@ -383,6 +369,7 @@ void proc_main_task(s32 taskId)
                 if (NW_STAT_REGISTERED == msg.param2 || NW_STAT_REGISTERED_ROAMING == msg.param2)
                 {
                     APP_DEBUG("<-- Module has registered to GPRS network -->\r\n");
+
                 }
                 else
                 {
@@ -417,11 +404,8 @@ void proc_main_task(s32 taskId)
 
 void proc_subtask1(s32 TaskId)
 {
-    ST_MSG subtask1_msg;
-    //s32 wtdid;
-    //s32 ret;
-
-    //Ql_Debug_Trace("<-- subtask1: enter ->\r\n");
+    s32 ret;
+    s32 tmpSEC 		= 55;
 
     do
     {
@@ -429,23 +413,27 @@ void proc_subtask1(s32 TaskId)
     }
     while(programmData.firstInit == FALSE);
 
-    APP_DEBUG("<-- subtask1: starting -->\r\n");
+    APP_DEBUG("<-- subtask1: starting now -->\r\n");
 
     InitWDT();//mast be first
-
     InitFlash();
-    InitUART();
-    InitGPIO();
-    InitADC();
+    //InitGPIO();
+    //InitUART();
+    //InitADC();
 
     while (TRUE)
     {
-        Ql_OS_GetMessage(&subtask1_msg);
-        switch (subtask1_msg.message)
-        {
-            default:
-                break;
-        }
+    	Ql_Sleep(1000);
+    	programmData.totalSeconds++;
+    	//APP_DEBUG("<-- subtask1: totalSeconds=%d -->\r\n", programmData.totalSeconds);
+    	if(tmpSEC++ >= 59)
+    	{
+    		tmpSEC = 0;
+			if(GetLocalTime() == TRUE)
+			{
+
+			}
+    	}
     }
 }
 /*****************************************************************/
@@ -453,7 +441,9 @@ void proc_subtask1(s32 TaskId)
 static void wdt_callback_onTimer(u32 timerId, void* param)
 {
     s32* wtdid = (s32*)param;
-    Ql_Debug_Trace("<-- time to feed logic watchdog wtdid=%d-->\r\n", *wtdid);
+    APP_DEBUG("<-- time to feed logic watchdog (wtdId=%d) -->\r\n",*wtdid);
+    return;
+
     if(programmData.needReboot == FALSE)
     {
     	Ql_WTD_Feed(*wtdid);
@@ -461,7 +451,7 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     else
     {
     	u32 cnt = WTD_TMR_TIMEOUT*2/100 + 1;
-    	Ql_Debug_Trace("<-- time to not feed logic watchdog (wtdId=%d) needReboot=(%s) cnt=(%d)-->\r\n", *wtdid, programmData.needReboot == TRUE ? "TRUE" : "FALSE", cnt);
+    	APP_DEBUG("<-- time to not feed logic watchdog (wtdId=%d) needReboot=(%s) cnt=(%d)-->\r\n", *wtdid, programmData.needReboot == TRUE ? "TRUE" : "FALSE", cnt);
     	//Ql_PowerDown(1);
     	//Ql_Debug_Trace("<-- wdt_callback_onTimer Ql_PowerDown successful-->\r\n");
     	do{
@@ -470,7 +460,7 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     	}
     	while(cnt--);
 
-    	Ql_Debug_Trace("<-- wdt_callback_onTimer wait real wdt reboot successfull, try Ql_Reset-->\r\n");
+    	APP_DEBUG("<-- wdt_callback_onTimer wait real wdt reboot successfull, try Ql_Reset-->\r\n");
     	Ql_Reset(0);
 
     	while(1);
@@ -481,12 +471,12 @@ void Callback_PowerKey_Hdlr(s32 param1, s32 param2)
 {
 	Ql_Debug_Trace("<-- Power Key: %s, %s -->\r\n", param1==POWER_OFF ? "Power Off":"Power On",param2==KEY_DOWN ? "Key Down":"Key Up");
 	if (POWER_ON == param1){
-		Ql_Debug_Trace("<-- App Lock Power Key! -->\r\n");
+		APP_DEBUG("<-- App Lock Power Key! -->\r\n");
 		//Ql_LockPower();
 	}
 	else if (POWER_OFF == param1)
 	{
-		Ql_Debug_Trace("<-- Ql_PowerDown! -->\r\n");
+		APP_DEBUG("<-- Ql_PowerDown! -->\r\n");
 		//Post processing before power down
 		//...
 		//Power down
@@ -497,7 +487,13 @@ void Callback_PowerKey_Hdlr(s32 param1, s32 param2)
 static void gpio_callback_onTimer(u32 timerId, void* param)
 {
 	s32 ret;
+
 	if(programmData.firstInit == FALSE) return;
+
+	APP_DEBUG("<--gpio_callback_onTimer=%d, firstInit=%s -->\r\n", timerId, programmData.firstInit == FALSE ? "FALSE":"TRUE");
+	return;
+
+
 	if (GPIO_TIMER_ID == timerId)
 	{
 		//APP_DEBUG("<-- Get the button_pin GPIO level value: %d -->\r\n", Ql_GPIO_GetLevel(button_pin));
@@ -540,10 +536,12 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	        if(m_socketid >= 0)
 	        {
 				APP_DEBUG("<--Socket reconnect timeout, need_tcp_connect socketId=%d, secondsToReconnect=<%d> -->\r\n", m_socketid, programmSettings.secondsToReconnect);
+				/*
 				ret = Ql_SOC_Close(m_socketid);
 				m_socketid = -1;
 				APP_DEBUG("<-- Closing socket. ret=<%d> -->\r\n", ret);
-				m_tcp_state = m_tcp_state = STATE_SOC_CREATE;//STATE_GPRS_DEACTIVATE
+				m_tcp_state = STATE_SOC_CREATE;//STATE_GPRS_DEACTIVATE*/
+				m_tcp_state = STATE_SOC_CLOSE;
 	        }
 	      }
 
@@ -556,17 +554,15 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	      if(programmData.pingCnt++ > programmSettings.secondsToPing)
 	      {
 	        programmData.pingCnt  = 0;
-	        if(m_remain_len == 0 && m_pCurrentPos == NULL)
+	        if(m_remain_len == 0 && m_pCurrentPos == NULL && m_socketid >= 0)
 	        {
 	        	m_pCurrentPos = m_send_buf;
 	        	m_pCurrentPos[0] = 0;//send 1 byte
 	        	m_remain_len++;
 
-	        	//APP_DEBUG("<--Socket ping timeout, need_tcp_ping 1 byte socketId=%d, m_remain_len=%d -->\r\n", m_socketid, m_remain_len);
+	        	APP_DEBUG("<--Socket ping timeout, need_tcp_ping 1 byte socketId=%d, m_remain_len=%d -->\r\n", m_socketid, m_remain_len);
 	        }
 	      }
-	      //Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
-	      Ql_GPIO_SetLevel(led_pin, PINLEVEL_HIGH);
 
 	      //authorization
 	      if(programmData.autCnt > 0){
@@ -578,6 +574,8 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	    	  }
 	    	  programmData.autCnt--;
 	      }
+
+	      Ql_GPIO_SetLevel(led_pin, PINLEVEL_HIGH);//Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
 	    }
 	    else{
 	    	Ql_GPIO_SetLevel(led_pin, PINLEVEL_LOW);
@@ -616,7 +614,6 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
     {
         APP_DEBUG("<-- 90s time out!!! -->\r\n");
 
-        
         ret = Ql_SOC_Close(m_socketid);
         m_socketid = -1;
 
@@ -629,14 +626,10 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
     else if (CSQ_TIMER_ID == timerId)
     {
     	//APP_DEBUG("<--...........CSQ_TIMER_ID=%d..................-->\r\n", timerId);
-
-        u32 rssi;
-        u32 ber;
-        RIL_NW_GetSignalQuality(&rssi, &ber);
-
+        RIL_NW_GetSignalQuality(&programmData.rssi, &programmData.ber);
         u64 totalMS;
         totalMS = Ql_GetMsSincePwrOn();
-        APP_DEBUG("<-- Uptime: %lld ms, signal strength: %d, BER: %d -->\r\n", totalMS, rssi, ber);
+        APP_DEBUG("<-- Uptime: %lld ms, signal strength: %d, BER: %d -->\r\n", totalMS, programmData.rssi, programmData.ber);
     }
     else if (TCP_TIMER_ID == timerId)
     {
@@ -968,6 +961,24 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                 }
                 break;
             }
+            case STATE_SOC_CLOSE:
+            {
+            	if(m_socketid >= 0)
+            	{
+            		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
+            		APP_DEBUG("<--socket closed, ret(%d)-->\r\n", ret);
+            		if(ret < 0){
+            			programmData.needReboot = TRUE;
+            		}
+            	}
+		        m_socketid = -1;
+                m_remain_len = 0;
+                m_pCurrentPos = NULL;
+                Ql_Timer_Stop(TIMEOUT_90S_TIMER_ID);
+                m_tcp_state = STATE_NW_GET_SIMSTATE;//!!!!
+                break;
+            }
+
             case STATE_GPRS_DEACTIVATE:
             {
                 //APP_DEBUG("<--Deactivate GPRS.-->\r\n");
@@ -1097,10 +1108,26 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
             //wait next CallBack_socket_read
             break;
         }
-        else if(ret < RECV_BUFFER_LEN)
+        else if(ret <= RECV_BUFFER_LEN)
         {
+        	char tmp_buff[300] = {0};
             APP_DEBUG("<-- Receive data from sock(%d), len(%d) and write to UART_PORT3 -->\r\n", socketId, ret);
-            Ql_UART_Write(UART_PORT3, m_recv_buf, ret);
+    		char *answer = Parse_Command(m_recv_buf, tmp_buff, &programmSettings, &programmData);
+    		if( answer != NULL)
+    		{
+    			u32 alen = Ql_strlen(answer);
+    			APP_DEBUG("cmd from socket, answer=<%s>", answer);
+
+    			//send answer to server
+    			m_pCurrentPos = m_send_buf;
+    			//Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
+    			Ql_memcpy(m_pCurrentPos + m_remain_len, answer, alen);//!!!
+    			m_remain_len += alen;
+    		}
+    		else{
+    			Ql_UART_Write(UART_PORT3, m_recv_buf, ret);
+    		}
+
 
             if(ret > 1)
             	programmData.reconnectCnt = 0;
@@ -1127,6 +1154,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
             //read finish, wait next CallBack_socket_read
             break;
         }
+        /*
         else if(ret == RECV_BUFFER_LEN)
         {
             APP_DEBUG("<-- Receive full buffer data from sock(%d), len(%d) and write to UART_PORT3 -->\r\n", socketId, ret);
@@ -1137,6 +1165,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
             	programmData.reconnectCnt = programmSettings.secondsToReconnect/10;
             //read continue
         }
+        */
     }
     while(1);
 }
@@ -1226,20 +1255,25 @@ void CallBack_GPRS_Deactived(u8 contextId, s32 errCode, void* customParam )
     }
 }
 
-
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam)
 {
-	s32 index = *((s32*)customParam);
+	u32 index = *((u32*)customParam);
 	if(index % 60 == 0)
 	{
-		//APP_DEBUG( "<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam) );
-		u32 capacity, voltage;
+		APP_DEBUG( "<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam) );
+		//u32 capacity, voltage;
+
+
+		/*
 		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
 		if(ret == QL_RET_OK){
-			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d -->\r\n", voltage, adcValue);
+			programmData.tempValue = GetTempValue(adcValue);
+			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.tempValue);
 		}
+		*/
+
 	}
-    *((s32*)customParam) += 1;
+    *((u32*)customParam) += 1;
 }
 
 /*****************************************************************
@@ -1286,7 +1320,7 @@ static void InitWDT(void)
 
     APP_DEBUG("<-- InitWDT -->\r\n");
     // Initialize external watchdog:
-    ret = Ql_WTD_Init(0, PINNAME_RI, 300);//дергаем ногой почаще тк время сброса у tps-ки 1600мс
+    ret = Ql_WTD_Init(0, PINNAME_RI, 600);//дергаем ногой почаще тк время сброса у tps-ки 1600мс
     if (0 == ret)
         APP_DEBUG("\r\n<--OpenCPU: watchdog init OK!-->\r\n");
 
@@ -1300,20 +1334,19 @@ static void InitWDT(void)
         APP_DEBUG("<--main task: register fail ret=%d-->\r\n", ret);
         return;
     }
-    // The real feeding interval is 300 ms
-    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 300, TRUE);
+    // The real feeding interval is 600 ms
+    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 600, TRUE);
     if(ret < 0){
         APP_DEBUG("<--main task: start timer fail ret=%d-->\r\n",ret);
         return;
     }
-    //APP_DEBUG("<-- InitWDT end -->\r\n");
-    Ql_Sleep(300);
+    APP_DEBUG("<-- InitWDT end -->\r\n");
 }
 
 static void InitUART(void)
 {
     // Register & open UART port
-	Ql_Debug_Trace("<-- InitUART -->\r\n");
+	APP_DEBUG("<-- InitUART -->\r\n");
 
 	s32 ret;
     ST_UARTDCB dcb;
@@ -1326,19 +1359,19 @@ static void InitUART(void)
 
     ret = Ql_UART_Register(UART_PORT3, CallBack_UART_Hdlr, NULL);
     if (ret < QL_RET_OK)
-        Ql_Debug_Trace("<-- Ql_UART_Register(mySerialPort=%d)=%d -->\r\n", UART_PORT3, ret);
+    	APP_DEBUG("<-- Ql_UART_Register(mySerialPort=%d)=%d -->\r\n", UART_PORT3, ret);
 
     ret = Ql_UART_OpenEx(UART_PORT3, &dcb);
     if (ret < QL_RET_OK)
-        Ql_Debug_Trace("<-- Ql_UART_OpenEx(mySerialPort=%d)=%d -->\r\n", UART_PORT3, ret);
+    	APP_DEBUG("<-- Ql_UART_OpenEx(mySerialPort=%d)=%d -->\r\n", UART_PORT3, ret);
 
-    //Ql_Debug_Trace("<-- InitUART end -->\r\n");
+    APP_DEBUG("<-- InitUART end -->\r\n");
 }
 
 static void InitGPRS(void)
 {
     //register & start timer
-	Ql_Debug_Trace("<-- InitGPRS -->\r\n");
+	APP_DEBUG("<-- InitGPRS -->\r\n");
 
     Ql_Timer_Register(TCP_TIMER_ID, gsm_callback_onTimer, NULL);
     Ql_Timer_Start(TCP_TIMER_ID, TCP_TIMER_PERIOD, TRUE);
@@ -1349,12 +1382,12 @@ static void InitGPRS(void)
     Ql_Timer_Register(CSQ_TIMER_ID, gsm_callback_onTimer, NULL);
     Ql_Timer_Start(CSQ_TIMER_ID, CSQ_TIMER_PERIOD, TRUE);
 
-    //Ql_Debug_Trace("<-- InitGPRS end -->\r\n");
+    APP_DEBUG("<-- InitGPRS end -->\r\n");
 }
 
 static void InitGPIO(void)
 {
-	Ql_Debug_Trace("<-- InitGPIO -->\r\n");
+	APP_DEBUG("<-- InitGPIO -->\r\n");
 
     Ql_GPIO_Init(led_pin, 		PINDIRECTION_OUT, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
     Ql_GPIO_Init(button_pin, 	PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_DISABLE);
@@ -1367,7 +1400,7 @@ static void InitGPIO(void)
     Ql_Timer_Register(LED_TIMER_ID, gpio_callback_onTimer, NULL);
     Ql_Timer_Start(LED_TIMER_ID, 50, TRUE);
 
-
+    APP_DEBUG("<-- InitGPIO end -->\r\n");
 }
 
 static void InitADC(void)
@@ -1389,6 +1422,33 @@ static void InitADC(void)
     // Stop  sampling ADC
     //Ql_ADC_Sampling(adcPin, FALSE);
 
+}
+
+static bool GetLocalTime(void)
+{
+	bool ret = FALSE;
+
+	APP_DEBUG("<--Try get Local time -->\r\n");
+/*
+
+    if( Ql_GetLocalTime(&time) )
+    {
+        //This function get total seconds elapsed   since 1970.01.01 00:00:00.
+        totalSeconds = Ql_Mktime(&time);
+        APP_DEBUG("<--Local time successfuly determined: %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
+
+        if(totalSeconds > 0)
+        	programmData.totalSeconds = totalSeconds;
+        APP_DEBUG("<--totalSeconds=%l-->\r\n", programmData.totalSeconds);
+        ret = TRUE;
+    }
+    else
+    {
+        APP_DEBUG("\r\n<--failed !! Local time not determined -->\r\n");
+    }
+
+    */
+    return ret;
 }
 
 
@@ -2004,6 +2064,7 @@ static bool SMS_Initialize(void)
 
     return TRUE;
 }
+
 /*****************************************************************************
 * Function:
 *
@@ -2437,6 +2498,14 @@ static char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ra
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "button timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 1){ // 1 s
+    			  sett_in_ram->buttonTimeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
     	  else if(Ql_strcmp(cmd, "authorization password") == 0)
     	  {
     		  if(vlen <= AUT_PASSWORD_LEN)
@@ -2451,6 +2520,7 @@ static char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ra
         	      return ret;
     		  }
     	  }
+
 
     	  if(r == TRUE){
     		  *(--ch) = 0;
@@ -2764,6 +2834,37 @@ static char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    else if(Ql_strcmp(cmd, "input1 value") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", programmData.in1State);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "input2 value") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", programmData.in2State);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "termo value") == 0 || Ql_strcmp(cmd, "temp value") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%f", programmData.tempValue);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+
 	else if(Ql_strcmp(cmd, "signal") == 0)
 	{
 		ret = Gsm_GetSignal(tmp_buff);
@@ -2774,28 +2875,6 @@ static char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
 }
 
 
-static s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout)
-{
-	s32 ret = -1;
-	s32 st = Ql_GPIO_GetLevel(*pin);
-	if(st > 0){
-		if( *cnt <  max_timeout)
-			*(cnt) += 1;
-		if(*cnt >= max_timeout){
-			*(cnt) = max_timeout;
-			ret = TRUE;
-		}
-	}
-	else{
-		if( *cnt >  0)
-			*(cnt) -= 1;
-		if(*cnt <= 0){
-			*(cnt) = 0;
-			ret = FALSE;
-		}
-	}
-	return ret;
-}
 
 #endif // __EXAMPLE_TCPCLIENT__
 

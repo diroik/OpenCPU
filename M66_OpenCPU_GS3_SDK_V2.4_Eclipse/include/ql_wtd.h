@@ -68,7 +68,7 @@
 *               QL_RET_OK indicates success in starting watch dog service.
 *               QL_RET_ERR_PARAM indicates the param invalid.
 *****************************************************************/
-s32 Ql_WTD_Init(s32 resetMode, Enum_PinName wtdPin, u32 interval);
+s32 Ql_WTD_Init(s32 resetMode, Enum_PinName wtdPin, u32 interval);
 
 
 

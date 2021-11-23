@@ -50,9 +50,9 @@
 /*----------------------------------------------------------------------------------------------------
  |        Task Entry Function | Task Id Name   | Task Stack Size (Bytes) | Default Value1 | Default Value2 |
  *----------------------------------------------------------------------------------------------------*/
-TASK_ITEM(proc_main_task,       main_task_id,   10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
-TASK_ITEM(proc_reserved1,       reserved1_id,   5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
-TASK_ITEM(proc_reserved2,       reserved2_id,   5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+TASK_ITEM(proc_main_task,       main_task_id,   10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2) //main task
+TASK_ITEM(proc_reserved1,       reserved1_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2) //RIL task
+TASK_ITEM(proc_reserved2,       reserved2_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2) //URC task
 
 #if __ECHO_REMOTE_APP__ 
 TASK_ITEM(proc_subtask1,  subtask1_id, 1*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
@@ -95,10 +95,12 @@ TASK_ITEM(proc_subtask1,  subtask1_id, 1*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
 #ifdef __EXAMPLE_TCPCLIENT__
-TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+TASK_ITEM(proc_subtask1,  subtask1_id, 10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
-
+#ifdef __GSM_TEMINAL__
+TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+#endif
 
 /**
  ******* TAST CONFIG END ********

@@ -47,7 +47,8 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 #define MAX_FTP_FILENAME_LEN  16
 #define MAX_FTP_FILEPATH_LEN  16
 
-
+#define RESISTOR 2000.0
+#define AUT_TIMEOUT 300
 #define FW_VERSION "1.2"
 
 typedef enum{
@@ -179,13 +180,47 @@ typedef struct{
     bool 			Hin1State;
     bool 			in2State;
     bool 			Hin2State;
+    float 			tempValue;
+
 
     u32            	rebootCnt;
     u32            	reconnectCnt;
     u32            	pingCnt;
     u32 			autCnt;
+    u32				totalSeconds;
+
+    u32 			rssi;
+    u32		 		ber;
+
 
 }sProgrammData;
+
+
+/***********************************************************************
+ * SMS CONSTANT DEFINITIONS
+************************************************************************/
+#define CON_SMS_BUF_MAX_CNT   (1)
+#define CON_SMS_SEG_MAX_CHAR  (160)
+#define CON_SMS_SEG_MAX_BYTE  (4 * CON_SMS_SEG_MAX_CHAR)
+#define CON_SMS_MAX_SEG       (7)
+
+/***********************************************************************
+ * SMS STRUCT TYPE DEFINITIONS
+************************************************************************/
+typedef struct
+{
+    u8 aData[CON_SMS_SEG_MAX_BYTE];
+    u16 uLen;
+} ConSMSSegStruct;
+
+typedef struct
+{
+    u16 uMsgRef;
+    u8 uMsgTot;
+
+    ConSMSSegStruct asSeg[CON_SMS_MAX_SEG];
+    bool abSegValid[CON_SMS_MAX_SEG];
+} ConSMSStruct;
 
 
 
