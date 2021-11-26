@@ -14,7 +14,7 @@
 #ifdef __OCPU_FOTA_BY_HTTP__
 
 #if UPGRADE_APP_DEBUG_ENABLE > 0
-extern char FOTA_DBGBuffer[DBG_BUF_LEN];
+extern char FOTA_DBGBuffer[DBG_BUFUPGRADE_APP_DBG_BUF_LEN_LEN];
 #endif
 
 s32 quectel_stricmp_bylength(char *firststr, char *secondstr, int length)

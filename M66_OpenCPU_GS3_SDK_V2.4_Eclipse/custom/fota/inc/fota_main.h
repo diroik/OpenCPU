@@ -37,27 +37,10 @@
 #include "ql_uart.h"
 #include "ql_gpio.h"
 #include "ql_gprs.h"
-
+#include "typedef.h"
 /******************************************************************************
 * Macros
 ******************************************************************************/
-#define UPGRADE_APP_DEBUG_ENABLE 1
-#if UPGRADE_APP_DEBUG_ENABLE > 0
-#define UPGRADE_APP_DEBUG_PORT  UART_PORT1
-#define DBG_BUF_LEN   512
-#define UPGRADE_APP_DEBUG(BUF,...) QL_TRACE_LOG(UPGRADE_APP_DEBUG_PORT,BUF,DBG_BUF_LEN,__VA_ARGS__)
-#else
-#define UPGRADE_APP_DEBUG(BUF,...) 
-#endif
-
-#define FOTA_DBG_SMPL_PRINT_EN  0
-#if FOTA_DBG_SMPL_PRINT_EN > 0
-#define FOTA_DBG_PRINT_PORT  UART_PORT1
-#define FOTA_DBG_PRINT(STR)  Ql_UART_Write(FOTA_DBG_PRINT_PORT, (u8*)(STR), Ql_strlen((const char *)(STR)))
-#else
-#define FOTA_DBG_PRINT(STR)
-#endif
-
 #define MSG_ID_RESET_MODULE_REQ     (MSG_ID_URC_INDICATION + 3)
 #define MSG_ID_FTP_RESULT_IND       (MSG_ID_URC_INDICATION + 4)
 

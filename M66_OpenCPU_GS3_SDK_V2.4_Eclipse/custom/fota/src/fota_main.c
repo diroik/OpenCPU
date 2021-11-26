@@ -19,10 +19,6 @@ u8 Fota_apn[MAX_GPRS_APN_LEN] = "CMNET\0";
 u8 Fota_userid[MAX_GPRS_USER_NAME_LEN] = "";
 u8 Fota_passwd[MAX_GPRS_PASSWORD_LEN] = "";
 
-#if UPGRADE_APP_DEBUG_ENABLE > 0
-char FOTA_DBGBuffer[DBG_BUF_LEN];
-#endif
-
 static bool Fota_Upgrade_States(Upgrade_State state, s32 fileDLPercent);
 
 extern ST_ExtWatchdogCfg* Ql_WTD_GetWDIPinCfg(void);
@@ -34,29 +30,34 @@ s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State 
     bool retValue;
     u8 contextId;
     
+    //APP_DEBUG("<-- Ql_FOTA_StartUpgrade-->\r\n");
+
     ret = Ql_GPRS_GetPDPContextId();
     if (GPRS_PDP_ERROR == ret)
     {
-        FOTA_DBG_PRINT("Fail to get pdp context\r\n");
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Fail to get pdp context\r\n -->\r\n");
+        APP_DEBUG("<-- Fail to get pdp context\r\n -->\r\n");
         return -1;
     }
     contextId = (u8)ret;
-
+    APP_DEBUG("<-- Ql_GPRS_GetPDPContextId contextId=%d -->\r\n", contextId);
     /*---------------------------------------------------*/
     Ql_memset((void *)(&FotaConfig), 0, sizeof(ST_FotaConfig)); 
     FotaConfig.Q_gpio_pin1 = Ql_WTD_GetWDIPinCfg()->pinWtd1;
     FotaConfig.Q_feed_interval1 = 100;
     FotaConfig.Q_gpio_pin2 = Ql_WTD_GetWDIPinCfg()->pinWtd2;
     FotaConfig.Q_feed_interval2 = 100;
+
+
+    //APP_DEBUG("<-- start Ql_FOTA_Init -->\r\n");
     ret=Ql_FOTA_Init(&FotaConfig);
     if(ret !=0)
     {
-        FOTA_DBG_PRINT("Fail to Init FOTA\r\n");
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Fota Init Failed (ret= %d  FotaConfig.Q_gpio_pin1 =%d) -->\r\n",ret,FotaConfig.Q_gpio_pin1);
+        APP_DEBUG("<-- Fota Init Failed (ret= %d  FotaConfig.Q_gpio_pin1 =%d) -->\r\n",ret,FotaConfig.Q_gpio_pin1);
         FOTA_UPGRADE_IND(UP_FOTAINITFAIL, 0,retValue);
         return -1;
     }
+
+    APP_DEBUG("<-- Ql_FOTA_Init ret=%d -->\r\n", ret);
     /*---------------------------------------------------*/    
 
     if(NULL != callbcak_UpgradeState_Ind)
@@ -71,8 +72,10 @@ s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State 
     Ql_strcpy(Fota_passwd, 	apnCfg->apnPasswd);
 
 #ifdef __OCPU_FOTA_BY_FTP__
-    if(FTP_IsFtpServer(url))
+
+    if(FTP_IsFtpServer(url) == TRUE)
     {
+    	APP_DEBUG("__OCPU_FOTA_BY_FTP__ url=[%s], apnName=[%s] apnUserId=[%s] apnPasswd=[%s]\r\n", url, Fota_apn, Fota_userid, Fota_passwd);
         FOTA_UPGRADE_IND(UP_START,0,retValue);
         ret = FTP_FotaMain(contextId, url);
     }
@@ -88,9 +91,7 @@ s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State 
     else
 #endif
     {
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- The head of the URL string is incorrect or didn't define FOTA in custom_feature_def.h. -->\r\n");
-        FOTA_DBG_PRINT("<-- The head of the URL string is incorrect or didn't define FOTA in custom_feature_def.h. -->\r\n");
-
+        APP_DEBUG("<-- The head of the URL string is incorrect or didn't define FOTA in custom_feature_def.h. -->\r\n");
 		return -1;
     }
 
@@ -130,45 +131,36 @@ s32 Ql_FOTA_StopUpgrade(void)
 *****************************************************************/    
 static bool Fota_Upgrade_States(Upgrade_State state, s32 fileDLPercent)
 {
+	//APP_DEBUG("Fota_Upgrade_States state = %d", state);
     switch(state)
     {
         case UP_START:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Fota start to Upgrade -->\r\n");
-            FOTA_DBG_PRINT("<-- Fota start to Upgrade -->\r\n");
+            APP_DEBUG("<-- Fota start to Upgrade -->\r\n");
             break;
         case UP_FOTAINITFAIL:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Fota Init failed!! -->\r\n");
-            FOTA_DBG_PRINT("<-- Fota Init failed!! -->\r\n");
+            APP_DEBUG("<-- Fota Init failed!! -->\r\n");
             break;
         case UP_CONNECTING:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- connecting to the server-->\r\n");
-            FOTA_DBG_PRINT("<-- connecting to the server-->\r\n");
+            APP_DEBUG("<-- connecting to the server-->\r\n");
             break; 
         case UP_CONNECTED:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- conneced to the server now -->\r\n");
-            FOTA_DBG_PRINT("<-- conneced to the server now -->\r\n");
+            APP_DEBUG("<-- conneced to the server now -->\r\n");
             break; 
         case UP_GETTING_FILE:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- getting the bin file (%d) -->\r\n", fileDLPercent);
-            FOTA_DBG_PRINT("<-- getting the bin file  -->\r\n");
+            APP_DEBUG("<-- getting the bin file (%d) -->\r\n", fileDLPercent);
             break;     
         case UP_GET_FILE_OK:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--file down OK (%d) -->\r\n", fileDLPercent);
-            FOTA_DBG_PRINT("<--file down OK -->\r\n");
+            APP_DEBUG("<--file down OK (%d) -->\r\n", fileDLPercent);
             break;  
         case UP_UPGRADFAILED:
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--Fota upgrade failed !!!! -->\r\n");
-            FOTA_DBG_PRINT("<--Fota upgrade failed !!!! -->\r\n");
+            APP_DEBUG("<--Fota upgrade failed !!!! -->\r\n");
             break;   
-
 
         case UP_SYSTEM_REBOOT: // If fota upgrade is in this case, this function you can  return false or true, Notes:  
         {
             // this case is important. return TRUE or FALSE, you can design by youself.
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--Return TRUE, system will reboot, and upgrade  -->\r\n");
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--Return FLASE, you must invoke Ql_FOTA_Update()  for upgrade !!!-->\r\n");
-            FOTA_DBG_PRINT("<--Return TRUE, system will reboot, and upgrade  -->\r\n");
-            FOTA_DBG_PRINT("<--Return FLASE, you must invoke Ql_FOTA_Update()  for upgrade !!!-->\r\n");
+            APP_DEBUG("<--Return TRUE, system will reboot, and upgrade  -->\r\n");
+            APP_DEBUG("<--Return FLASE, you must invoke Ql_FOTA_Update()  for upgrade !!!-->\r\n");
             return TRUE;// if return TRUE  the module will reboot ,and fota upgrade complete.
             //return FALSE; // if return False,  you must invoke Ql_FOTA_Update()  function before you want to reboot the system.
         }

@@ -119,7 +119,7 @@ s32  RIL_NW_GetGPRSState(s32 *stat);
 *               QL_RET_OK indicates success.
 *               QL_RET_ERR_INVALID_PARAMETER indicates something wrong for input parameters. 
 ******************************************************************************/
-s32  RIL_NW_GetSignalQuality(u32* rssi, u32* ber);
+s32  RIL_NW_GetSignalQuality(s32* rssi, s32* ber);
 
 /******************************************************************************
 * Function:     RIL_NW_SetGPRSContext

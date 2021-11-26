@@ -110,7 +110,7 @@ bool Ql_HexStrToInt(u8* str, u32* val)
                 The function returns a pointer to the located string,
                 or a  null  pointer  if  the specified string is not found.
 ******************************************************************************/
-char* Ql_RIL_FindString(char *line, u32 len,char *str)
+char* Ql_RIL_FindString(char *line, u32 len, char *str)
 {
     s32 i;
     s32 strlen;

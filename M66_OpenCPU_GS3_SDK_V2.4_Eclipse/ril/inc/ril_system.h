@@ -185,6 +185,7 @@ s32 RIL_GetIMEI(char* imei);
 *index =,return FALSE
 *****************************************************************/
 bool QSDK_Get_Str(char *src_string,  char *dest_string, unsigned char index);
+
 s32 QSDK_Get_Strlen(const char *src_string, unsigned char index);
 
 #endif  //__RIL_SYSTEM_H__

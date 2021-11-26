@@ -18,7 +18,7 @@ extern u8 Fota_userid[10];
 extern u8 Fota_passwd[10];
 
 #if UPGRADE_APP_DEBUG_ENABLE > 0
-extern char FOTA_DBGBuffer[DBG_BUF_LEN];
+extern char FOTA_DBGBuffer[UPGRADE_APP_DBG_BUF_LEN];
 #endif
 
 extern Callback_Upgrade_State Fota_UpgardeState;

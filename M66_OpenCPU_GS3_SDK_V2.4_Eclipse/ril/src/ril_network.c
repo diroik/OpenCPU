@@ -297,7 +297,7 @@ static s32 ATResponse_CSQ_Handler(char* line, u32 len, void* userdata)
 *                RIL_AT_UNINITIALIZED, RIL is not ready, need to wait for MSG_ID_RIL_READY
 *                                      and then call Ql_RIL_Initialize to initialize RIL. 
 ******************************************************************************/
-s32  RIL_NW_GetSignalQuality(u32* rssi, u32* ber)
+s32  RIL_NW_GetSignalQuality(s32* rssi, s32* ber)
 {
     s32 retRes = 0;
     char strAT[] = "AT+CSQ\0";

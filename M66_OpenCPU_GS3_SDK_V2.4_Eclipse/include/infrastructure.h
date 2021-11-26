@@ -21,16 +21,15 @@
 #include "ril_sim.h"
 #include "ril_telephony.h"
 #include "ril_network.h"
+#include "ql_gprs.h"
 #include "fota_main.h"
 #include "typedef.h"
+#include "convert.h"
 #include "flash.h"
 
 /***********************************************************************
  *
 ************************************************************************/
-int clear_all_nulls(char *_ptr, int _size);
-void ByteToHex(char *HEX, char BYTE);
-int HexToByte(char *ptr);
 void reboot(sProgrammData *programmData);
 
 /***********************************************************************

@@ -69,7 +69,7 @@
 #include "ril_audio.h"
 #include "ril_util.h"
 
-#define DEBUG_ENABLE 1
+#define DEBUG_ENABLE 0
 #if DEBUG_ENABLE > 0
 #define DEBUG_PORT  UART_PORT1
 #define DBG_BUF_LEN   512

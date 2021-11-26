@@ -47,9 +47,9 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 #define MAX_FTP_FILENAME_LEN  16
 #define MAX_FTP_FILEPATH_LEN  16
 
-#define RESISTOR 2000.0
+#define RESISTOR 1000.0
 #define AUT_TIMEOUT 300
-#define FW_VERSION "1.2"
+#define FW_VERSION "1.3"
 
 typedef enum{
     STATE_NW_GET_SIMSTATE,
@@ -134,6 +134,29 @@ typedef struct{
 }sSecuritySettings;
 
 typedef struct{
+	u32 pid;
+	bool state;
+	bool confirm;
+
+    char            imei[30];
+    char 			iccid[30];
+
+    u32				totalSeconds;
+    s32 			timezone;
+
+    bool 			button;
+    bool 			in1;
+    bool 			in2;
+    float 			temp;
+	u16 			voltage;
+	u16 			capacity;
+
+    s32 			rssi;
+    s32		 		ber;
+    char 			version[10];
+}sDataJsonParams;
+
+typedef struct{
     u16    crc;
     u8     tmp1;
     u8     tmp2; //tmp for aligned to 4 bytes
@@ -147,8 +170,10 @@ typedef struct{
     u32            	secondsToReconnect;
     u32				secondsToPing;
 
-    u16            	serPortDataTimeout;
-    u16            	gsmPortDataTimeout;
+    //u16            	serPortDataTimeout;
+    //u16            	gsmPortDataTimeout;
+    u32				secondsOfDuration;
+
     //u16            	smsRecvTimeout;
 
     u8				buttonTimeout;//in sec
@@ -161,8 +186,14 @@ typedef struct{
 
 
 typedef struct{
+
+	s32				mainTaskId;
+	s32				subTaskId1;
+
     bool        	needReboot;
     bool 			firstInit;
+    bool			timeInit;
+    bool			socketTimersInit;
 
     //sBuffer     gsmRxBuffer;
     //sBuffer     serRxBuffer;
@@ -174,25 +205,17 @@ typedef struct{
     s32 		   	in1Cnt;
     s32				in2Cnt;
 
-    bool 			buttonState;
     bool 			HbuttonState;
-    bool 			in1State;
     bool 			Hin1State;
-    bool 			in2State;
     bool 			Hin2State;
-    float 			tempValue;
-
 
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	durationCnt;
     u32            	pingCnt;
     u32 			autCnt;
-    u32				totalSeconds;
 
-    u32 			rssi;
-    u32		 		ber;
-
-
+    sDataJsonParams dataState;
 }sProgrammData;
 
 

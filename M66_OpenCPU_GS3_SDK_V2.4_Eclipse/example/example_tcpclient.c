@@ -287,7 +287,7 @@ void proc_main_task(s32 taskId)
     APP_DEBUG("<--OpenCPU: Starting Application.-->\r\n");
     
 
-    //InitGPRS();
+    InitGPRS();
 
 
     while(TRUE)
@@ -404,8 +404,11 @@ void proc_main_task(s32 taskId)
 
 void proc_subtask1(s32 TaskId)
 {
-    s32 ret;
-    s32 tmpSEC 		= 55;
+    ST_MSG subtask1_msg;
+    //s32 wtdid;
+    //s32 ret;
+
+    //Ql_Debug_Trace("<-- subtask1: enter ->\r\n");
 
     do
     {
@@ -413,29 +416,27 @@ void proc_subtask1(s32 TaskId)
     }
     while(programmData.firstInit == FALSE);
 
-    APP_DEBUG("<-- subtask1: starting now -->\r\n");
+    APP_DEBUG("<-- subtask1: starting -->\r\n");
 
     InitWDT();//mast be first
+
     InitFlash();
-    //InitGPIO();
-    //InitUART();
-    //InitADC();
+    InitUART();
+    InitGPIO();
+    InitADC();
 
     while (TRUE)
     {
-    	Ql_Sleep(1000);
-    	programmData.totalSeconds++;
-    	//APP_DEBUG("<-- subtask1: totalSeconds=%d -->\r\n", programmData.totalSeconds);
-    	if(tmpSEC++ >= 59)
-    	{
-    		tmpSEC = 0;
-			if(GetLocalTime() == TRUE)
-			{
-
-			}
-    	}
+        Ql_OS_GetMessage(&subtask1_msg);
+        switch (subtask1_msg.message)
+        {
+            default:
+                break;
+        }
     }
 }
+
+
 /*****************************************************************/
 //Callback definition
 static void wdt_callback_onTimer(u32 timerId, void* param)
@@ -487,13 +488,7 @@ void Callback_PowerKey_Hdlr(s32 param1, s32 param2)
 static void gpio_callback_onTimer(u32 timerId, void* param)
 {
 	s32 ret;
-
 	if(programmData.firstInit == FALSE) return;
-
-	APP_DEBUG("<--gpio_callback_onTimer=%d, firstInit=%s -->\r\n", timerId, programmData.firstInit == FALSE ? "FALSE":"TRUE");
-	return;
-
-
 	if (GPIO_TIMER_ID == timerId)
 	{
 		//APP_DEBUG("<-- Get the button_pin GPIO level value: %d -->\r\n", Ql_GPIO_GetLevel(button_pin));

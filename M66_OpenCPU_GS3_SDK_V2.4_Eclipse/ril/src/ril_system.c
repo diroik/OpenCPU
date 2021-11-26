@@ -40,6 +40,7 @@
 #include "ql_system.h"
 
 #ifdef __OCPU_RIL_SUPPORT__ 
+
 static s32 SYS_ATResponse_Hanlder(char* line, u32 len, void* userdata)
 {
     s32* pSysInitStatus = (s32* )userdata; 
@@ -80,12 +81,6 @@ static s32 SYS_ATResponse_Hanlder(char* line, u32 len, void* userdata)
     }
 
     return RIL_ATRSP_CONTINUE; //continue wait
-}
-
-
-s32 RIL_QuerySysInitStatus( s32* SysInitStatus)
-{
-    return Ql_RIL_SendATCmd("AT+QINISTAT", 11, SYS_ATResponse_Hanlder, (void *)SysInitStatus, 0); 
 }
 
 static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
@@ -145,6 +140,10 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
 
 }
 
+s32 RIL_QuerySysInitStatus( s32* SysInitStatus)
+{
+    return Ql_RIL_SendATCmd("AT+QINISTAT", 11, SYS_ATResponse_Hanlder, (void *)SysInitStatus, 0);
+}
 
 /*****************************************************************
 * Function:     RIL_GetPowerSupply 

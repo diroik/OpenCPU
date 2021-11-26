@@ -14,6 +14,7 @@
 #include "fota_ftp.h"
 #include "fota_main.h"
 
+
 #ifdef __OCPU_FOTA_BY_FTP__
 #define FTP_CONNECT_ATTEMPTS        (5)     // max 5 times for attempt to connect, or restart module
 static u8 Contextid;
@@ -31,9 +32,6 @@ extern u8 Fota_passwd[MAX_GPRS_PASSWORD_LEN];
 extern CallBack_Ftp_Download FtpGet_IND_CB;
 extern Callback_Upgrade_State Fota_UpgardeState;
 
-#if UPGRADE_APP_DEBUG_ENABLE > 0
-extern char FOTA_DBGBuffer[DBG_BUF_LEN];
-#endif
 
 static void FTP_Program(void);
 
@@ -45,15 +43,12 @@ s32 FTP_FotaMain(u8 contextId, u8* URL)
     s32 retValue;
     bool ftpDecodeURL;
 
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--Fota ftp Main entry !-->\r\n");
-    FOTA_DBG_PRINT("Enter into FTP_FotaMain()");
+    APP_DEBUG("<--Fota ftp Main entry !-->\r\n");
 
     ftpDecodeURL = FTP_DecodeURL(URL, Ql_strlen((char*)URL), ServerAdder, FilePath, appBin_fName, Ftp_userName, Ftp_Possword, &SerPort);
     if(!ftpDecodeURL)
     {
-        FOTA_UPGRADE_IND(UP_URLDECODEFAIL,0,retValue);
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--ftp  DECODE URL FAILED !!!-->\r\n");
-        FOTA_DBG_PRINT("Fail to decode FTP URL\r\n");
+        APP_DEBUG("<--ftp  DECODE URL FAILED !!!-->\r\n");
         return -1;
     }
     Contextid = contextId;
@@ -65,8 +60,11 @@ s32 FTP_FotaMain(u8 contextId, u8* URL)
 
 bool FTP_IsFtpServer(u8* URL)
 {
-    char buffer[5];
-    Ql_memcpy(buffer, URL, sizeof(buffer));
+	APP_DEBUG("FTP_IsFtpServer");
+    char buffer[6];
+    Ql_memset(buffer, 0x0, sizeof(buffer));
+
+    Ql_memcpy(buffer, URL, 5);
     Ql_StrToUpper(buffer);
 
     if(NULL == Ql_strstr(buffer, "FTP"))
@@ -85,23 +83,19 @@ void FTP_Callback_OnDownload(s32 result,s32 size)
     bool retValue;
     if (result)
     {
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<---image bin file size =%d--->\r\n",size);
-        FOTA_DBG_PRINT("Succeed in downloading image bin via FTP\r\n");
+    	APP_DEBUG("<---image bin file size =%d--->\r\n",size);
         FOTA_UPGRADE_IND(UP_GET_FILE_OK,100,retValue);
     }else{
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- FTP fails to get file, cause=%d -->\r\n", size);
-        FOTA_DBG_PRINT("Fail to download image bin via FTP\r\n");
+    	APP_DEBUG("<-- FTP fails to get file, cause=%d -->\r\n", size);
         FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
     }
     ret = RIL_FTP_QFTPCLOSE();
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- FTP close connection, ret=%d -->\r\n", ret);
-    FOTA_DBG_PRINT("<-- Close ftp connection -->\r\n");
+    APP_DEBUG("<-- FTP close connection, ret=%d -->\r\n", ret);
 
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Deactivating PDP context -->\r\n");
-    FOTA_DBG_PRINT("<-- Deactivating PDP context -->\r\n");
+    APP_DEBUG("<-- Deactivating PDP context -->\r\n");
+
     ret = RIL_FTP_QIDEACT();
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Released PDP context, ret=%d -->\r\n", ret);
-    FOTA_DBG_PRINT("<-- Released PDP context -->\r\n");
+    APP_DEBUG("<-- Released PDP context, ret=%d -->\r\n", ret);
 
     // Start to do upgrading by FOTA
     if (result)
@@ -127,68 +121,56 @@ static void FTP_Program(void)
     u32 fileSize = 0;
     
     ret = RIL_NW_SetGPRSContext(Contextid);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set GPRS PDP context, ret=%d -->\r\n", ret);
-    FOTA_DBG_PRINT("<-- Set GPRS PDP context -->\r\n");
+    APP_DEBUG( "<-- Set GPRS PDP context, ret=%d -->\r\n", ret);
 
     ret = RIL_NW_SetAPN(1,(char*)Fota_apn,(char*)Fota_userid,(char*)Fota_passwd);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set GPRS APN, ret=%d, apn=[%s] userid=[%s] passwd=[%s]-->\r\n", ret, Fota_apn, Fota_userid, Fota_passwd);
-    FOTA_DBG_PRINT("<-- Set GPRS APN -->\r\n");
+    APP_DEBUG("<-- Set GPRS APN, ret=%d, apn=[%s] userid=[%s] passwd=[%s]-->\r\n", ret, Fota_apn, Fota_userid, Fota_passwd);
 
     FOTA_UPGRADE_IND(UP_CONNECTING, 0, retValue);
     do
     {
         ret = RIL_FTP_QFTPOPEN(ServerAdder, SerPort, Ftp_userName, Ftp_Possword, 1);
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- FTP open connection, ret=%d -->\r\n", ret);
+        APP_DEBUG("<-- FTP open connection, ret=%d -->\r\n", ret);
         if (RIL_AT_SUCCESS == ret)
         {
             attempts = 0;
             FOTA_UPGRADE_IND(UP_CONNECTED,0,retValue);
-            FOTA_DBG_PRINT("<-- Open ftp connection -->\r\n");
             break;
         }
         attempts++;
-        FOTA_DBG_PRINT("<-- Retry to open FTP 2s later -->\r\n");
         Ql_Sleep(2000);
     } while (attempts < FTP_CONNECT_ATTEMPTS);
     if (FTP_CONNECT_ATTEMPTS == attempts)
     {
-        FOTA_DBG_PRINT("<-- Fail to open ftp connection for 5 times -->\r\n");
-
         // Infor the caller to reset the module
         Ql_OS_SendMessage(main_task_id, MSG_ID_RESET_MODULE_REQ, attempts, ret);
         return;
     }
 
     ret = RIL_FTP_QFTPCFG(4, (u8*)APP_BINFILE_PATH); 
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set local storage, ret=%d -->\r\n", ret);
-    FOTA_DBG_PRINT("<-- Set local storage -->\r\n");
+    APP_DEBUG("<-- Set local storage, ret=%d -->\r\n", ret);
 
     ret = RIL_FTP_QFTPPATH(FilePath);   
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Set remote path, ret=%d -->\r\n", ret);
-    FOTA_DBG_PRINT("<-- Set remote path -->\r\n");
+    APP_DEBUG("<-- Set remote path, ret=%d -->\r\n", ret);
 
     ret = RIL_FTP_QFTPSIZE(appBin_fName,&fileSize);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Get file Size, ret=%d,fileSize=%d -->\r\n", ret,fileSize);
-    FOTA_DBG_PRINT("<-- Get file Size -->\r\n");
+    APP_DEBUG("<-- Get file Size, ret=%d,fileSize=%d -->\r\n", ret,fileSize);
 
     FOTA_UPGRADE_IND(UP_GETTING_FILE,0,retValue);
     // By default, 3min time out in RIL
     ret = RIL_FTP_QFTPGET(appBin_fName, fileSize, FTP_Callback_OnDownload);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Downloading FTP file, ret=%d -->\r\n", ret);
+    APP_DEBUG("<-- Downloading FTP file, ret=%d -->\r\n", ret);
     if (ret < 0)
     {
         ret = RIL_FTP_QFTPCLOSE();
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- FTP close connection, ret=%d -->\r\n", ret);
-        FOTA_DBG_PRINT("<-- Close ftp connection -->\r\n");
+        APP_DEBUG( "<-- FTP close connection, ret=%d -->\r\n", ret);
 
         ret = RIL_FTP_QIDEACT();
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Release PDP context, ret=%d -->\r\n", ret);
-        FOTA_DBG_PRINT("<-- Released PDP context -->\r\n");
+        APP_DEBUG("<-- Release PDP context, ret=%d -->\r\n", ret);
 
         // Inform the caller of FTP downloading failed
         Ql_OS_SendMessage(main_task_id, MSG_ID_FTP_RESULT_IND, FTP_RESULT_FAILED, ret);
     }
-    FOTA_DBG_PRINT("<-- Downloading FTP file -->\r\n");
 }
 
 void DoUpgrade(void)
@@ -216,8 +198,7 @@ void DoUpgrade(void)
         filesize = Ql_FS_GetSize((char*)binfilePath);
         if(filesize < 0)
         {
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- Fail to get size (App)  Failed ret =%d-->\r\n",filesize);
-            FOTA_DBG_PRINT("<-- Fail to get file size -->\r\n");
+            APP_DEBUG("\r\n<-- Fail to get size (App)  Failed ret =%d-->\r\n",filesize);
             FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
             return;
         }
@@ -233,22 +214,19 @@ void DoUpgrade(void)
 
         if(fd_file < 0)
         {
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- Fail to open (App) !!-->\n");
-            FOTA_DBG_PRINT("<-- Fail to open file -->\r\n");
+            APP_DEBUG("\r\n<-- Fail to open (App) !!-->\n");
             FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
             return ;
         }
         file_buffer = Ql_MEM_Alloc(UP_DATA_BUFFER_LEN);
         if(NULL ==file_buffer)
         {
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- fota ftp  memory allocation failed !!-->\r\n");
-            FOTA_DBG_PRINT("<-- Fail allocate memory -->\r\n");
+            APP_DEBUG("\r\n<-- fota ftp  memory allocation failed !!-->\r\n");
             FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
             return ;
         }
         /*Write App  bin to flash*/  
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Processing data before update -->\r\n");
-        FOTA_DBG_PRINT("<-- Processing data before update -->\r\n");
+        APP_DEBUG( "<-- Processing data before update -->\r\n");
         while(filesize>0)
         {
             if (filesize <= UP_DATA_BUFFER_LEN)
@@ -260,8 +238,7 @@ void DoUpgrade(void)
             ret3 = Ql_FS_Read(fd_file, file_buffer, lenToRead, &realLen);
             if(ret3 != 0)
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<--Ql_FS_Read failed(ret =%d)-->\r\n",ret3); 
-                FOTA_DBG_PRINT("<-- Fail to read file -->\r\n");
+                APP_DEBUG("<--Ql_FS_Read failed(ret =%d)-->\r\n",ret3);
                 FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
                 return ;
             }
@@ -269,8 +246,7 @@ void DoUpgrade(void)
             ret3 = Ql_FOTA_WriteData(realLen,(s8*)file_buffer);
             if(ret3 != 0)
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<--Ql_FOTA_WriteData failed(ret =%d)-->\r\n",ret3); 
-                FOTA_DBG_PRINT("<-- Ql_FOTA_WriteData() failed -->\r\n");
+                APP_DEBUG( "<--Ql_FOTA_WriteData failed(ret =%d)-->\r\n",ret3);
                 FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
                 return ;
             }
@@ -283,16 +259,13 @@ void DoUpgrade(void)
             Ql_MEM_Free(file_buffer);
             file_buffer = NULL;
         }
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer, "<-- Finish processing data -->\r\n");
-        FOTA_DBG_PRINT("<-- Finish processing data -->\r\n");
+        APP_DEBUG("<-- Finish processing data -->\r\n");
         Ql_FS_Close(fd_file);
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Close file -->\r\n");
-        FOTA_DBG_PRINT("<-- Close file -->\r\n");
+        APP_DEBUG("<-- Close file -->\r\n");
     }
     else //if (QL_RET_ERR_FILENOTFOUND == ret2)
     {
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- App Bin(%s) does not exsit  ret=%d-->\r\n", (char*)binfilePath,ret2);
-        FOTA_DBG_PRINT("<-- App Bin file does not exsit -->\r\n");
+        APP_DEBUG("\r\n<-- App Bin(%s) does not exsit  ret=%d-->\r\n", (char*)binfilePath,ret2);
         FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
         return;      
     }
@@ -300,32 +273,27 @@ void DoUpgrade(void)
     ret3 = Ql_FOTA_Finish();     //Finish the upgrade operation ending with calling this API
     if(ret3 != 0)
     {
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- Fota App Finish Fail!(ret =%d) -->\r\n",ret3);
-        FOTA_DBG_PRINT("<-- Ql_FOTA_Finish() failed -->\r\n");
+        APP_DEBUG("\r\n<-- Fota App Finish Fail!(ret =%d) -->\r\n",ret3);
         FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
         return;
     }
 
-    FOTA_DBG_PRINT("<-- Delete file -->\r\n");
     Ql_FS_Delete((char*)binfilePath);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Delete file -->\r\n");
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<-- Start to Update! If you return TRUE in the fota upgrade callback in the UP_SYSTEM_REBOOT case,  the module will automatically restart.-->\r\n");
-    FOTA_DBG_PRINT("<-- Start to Update! If you return TRUE in the fota upgrade callback in the UP_SYSTEM_REBOOT case,  the module will automatically restart.-->\r\n");
+    APP_DEBUG("<-- Delete file -->\r\n");
+    APP_DEBUG("<-- Start to Update! If you return TRUE in the fota upgrade callback in the UP_SYSTEM_REBOOT case,  the module will automatically restart.-->\r\n");
 
     // Start to upgrade
     FOTA_UPGRADE_IND(UP_SYSTEM_REBOOT,100,retValue);
     if(NULL == Fota_UpgardeState  || (retValue))//  if fota upgrade callback function return TRUE in the UP_SYSTEM_REBOOT case ,the system upgrade app at once.
     {
-        UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--Fota upgrade callback return TRUE!!, system reboot for upgrade now-->\r\n");
-        FOTA_DBG_PRINT("<--Fota upgrade callback return TRUE!!, system reboot for upgrade now-->\r\n");
+        APP_DEBUG("<--Fota upgrade callback return TRUE!!, system reboot for upgrade now-->\r\n");
+
         Ql_Sleep(300);
         ret3=Ql_FOTA_Update();
         if(0 != ret3)
         {
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- Ql_Fota_Update FAILED!ret3=%d -->\r\n",ret3);
-            FOTA_DBG_PRINT("<-- Ql_FOTA_Update() failed -->\r\n");
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"\r\n<-- Reboot 1 second later ... -->\r\n");
-            FOTA_DBG_PRINT("<-- Reboot 1 second later ... -->\r\n");
+            APP_DEBUG("\r\n<-- Ql_Fota_Update FAILED!ret3=%d -->\r\n",ret3);
+            APP_DEBUG("\r\n<-- Reboot 1 second later ... -->\r\n");
             FOTA_UPGRADE_IND(UP_UPGRADFAILED,0,retValue);
             Ql_Sleep(1000);
             //Ql_Reset(0);
@@ -387,8 +355,7 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
         }
         if(i > FTP_SERVERADD_LEN)
         {
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--server Addess is too long!!! (the buffer limit size is %d)->\r\n",FTP_SERVERADD_LEN);
-            FOTA_DBG_PRINT("<--server Addess is too long!!! (the buffer limit size is 40)->\r\n");
+            APP_DEBUG("<--server Addess is too long!!! (the buffer limit size is %d)->\r\n",FTP_SERVERADD_LEN);
             break;
         }
         Ql_memcpy((char*)serverAdd,(char*)phostnamehead, i);  // here is server ip or domain name.
@@ -425,8 +392,7 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
             filePathLen = i-(i-j);
             if((binfilenameLen > FTP_BINFILENAME_LEN) ||(filePathLen > FTP_FILEPATH_LEN))
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--!! bin file name len(%d) or filePath(lne %d) is to loog ! limit len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
-                FOTA_DBG_PRINT("<--!! bin file name len or filePath is to loog ! limit len(binfilename=25, filePath=60)->\r\n");
+                APP_DEBUG("<--!! bin file name len(%d) or filePath(lne %d) is to loog ! limit len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
                 break;
             }
             Ql_memcpy((char *)binFile, (char *)(puri+j+1),binfilenameLen);
@@ -446,13 +412,12 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
             filePathLen = i-(i-j);
             if((binfilenameLen > FTP_BINFILENAME_LEN) ||(filePathLen > FTP_FILEPATH_LEN))
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--@@ bin file name len(%d) or filePath(lne %d) is to loog ! limit len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
-                FOTA_DBG_PRINT("<--@@ bin file name len(%d) or filePath(lne %d) is to loog ! limit len(binfilename=25, filePath=60)->\r\n");
+                APP_DEBUG("<--@@ bin file name len(%d) or filePath(lne %d) is to loog ! limit len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
                 break;
             }
             Ql_memcpy((char *)binFile, (char *)(puri+j+1),binfilenameLen);
             Ql_memcpy((char *)filePath, (char *)phostnamehead, filePathLen); 
-            UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--@@binFile=%s filePath=%s datalen=%d-->\r\n",binFile,filePath,datalen);       
+            APP_DEBUG("<--@@binFile=%s filePath=%s datalen=%d-->\r\n",binFile,filePath,datalen);
         }
         /* retrieve file path , image file name and port   /filepath/file/xxx.bin:8021@user......  */
         else// else if (puri[i] ==':')     ftp port number.  
@@ -466,8 +431,7 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
             filePathLen = i-(i-j);
             if((binfilenameLen > FTP_BINFILENAME_LEN) ||(filePathLen > FTP_FILEPATH_LEN))
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--## bin file name len(%d) or filePath(lne %d) is to loog ! limt len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
-                FOTA_DBG_PRINT("<--## bin file name len or filePath is to loog ! limit len(binfilename=25, filePath=60)->\r\n");
+                APP_DEBUG("<--## bin file name len(%d) or filePath(lne %d) is to loog ! limt len(binfilename=%d, filePath=%d)->\r\n",binfilenameLen,filePathLen,FTP_BINFILENAME_LEN,FTP_FILEPATH_LEN);
                 break;
             }
             Ql_memcpy((char *)binFile, (char *)(puri+j+1),binfilenameLen);
@@ -510,8 +474,7 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
         {
             if(i > FTP_USERNAME_LEN)
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--@@ ftp user name(len %d) is to loog ! limit len(%d)->\r\n",i,FTP_USERNAME_LEN);
-                FOTA_DBG_PRINT("<--@@ ftp user name is to loog ! limit len(20)->\r\n");
+                APP_DEBUG("<--@@ ftp user name(len %d) is to loog ! limit len(%d)->\r\n",i,FTP_USERNAME_LEN);
                 break;
             }
             Ql_memcpy(ftpUserName,phostnamehead+1,i); // ftp user name          
@@ -520,8 +483,7 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
         {
             if((i-1 > FTP_USERNAME_LEN) || (datalen > FTP_PASSWORD_LEN))
             {
-                UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--@@ ftp user name(len %d)  or password(len=%d)is to loog ! limit len(username=%d, pwd =%d)->\r\n",i-1,datalen,FTP_USERNAME_LEN,FTP_PASSWORD_LEN);
-                FOTA_DBG_PRINT("<--@@ ftp user name  or passwordis to loog ! limit len(username=20, pwd =20)->\r\n");
+                APP_DEBUG("<--@@ ftp user name(len %d)  or password(len=%d)is to loog ! limit len(username=%d, pwd =%d)->\r\n",i-1,datalen,FTP_USERNAME_LEN,FTP_PASSWORD_LEN);
                 break;
             }
             Ql_memcpy(ftpUserName,phostnamehead+1,i-1); // ftp user name 
@@ -535,20 +497,8 @@ bool FTP_DecodeURL(u8 *URL, s32 URLlength, u8 *serverAdd, u8* filePath,  u8* bin
         Ql_memcpy((void*)(filePath+Ql_strlen((const char*)filePath)), (const void*)"/", 1);  //  file path end with '/'
 	}
     //Ql_memcpy((void*)(filePath+Ql_strlen((const char*)filePath)), (const void*)"/", 1);  //  file path end with '/'
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--serverAdd=%s, file path=%s, image filename=%s-->\r\n",ServerAdder,FilePath,appBin_fName);
-    UPGRADE_APP_DEBUG(FOTA_DBGBuffer,"<--ftp user name=%s, user password =%s  serverPort=%d-->\r\n",Ftp_userName, Ftp_Possword,*serverPort);
-    FOTA_DBG_PRINT("<--serverAdd=");
-    FOTA_DBG_PRINT(ServerAdder);
-    FOTA_DBG_PRINT(" file path=");
-    FOTA_DBG_PRINT(FilePath);
-    FOTA_DBG_PRINT("image filename=");
-    FOTA_DBG_PRINT(appBin_fName);
-    FOTA_DBG_PRINT("\r\n");
-    FOTA_DBG_PRINT("<--ftp user name=");
-    FOTA_DBG_PRINT(Ftp_userName);
-    FOTA_DBG_PRINT(" user password =");
-    FOTA_DBG_PRINT(Ftp_Possword);
-    FOTA_DBG_PRINT("  serverPort=xxx-->\r\n");
+    APP_DEBUG("<--serverAdd=%s, file path=%s, image filename=%s-->\r\n",ServerAdder,FilePath,appBin_fName);
+    APP_DEBUG("<--ftp user name=%s, user password =%s  serverPort=%d-->\r\n",Ftp_userName, Ftp_Possword,*serverPort);
     return ret;
 }
 

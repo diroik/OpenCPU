@@ -8,72 +8,6 @@
 #include "infrastructure.h"
 
 //**************************************************
-int clear_all_nulls(char *_ptr, int _size)
-{
-        //
-        char *ptrDst;
-        char *ptrSrc;
-
-        for(int i = 0; i <= _size; i++)
-        {
-          ptrDst = &_ptr[i];
-          if( *ptrDst < ' ')
-          {
-            ptrSrc = &_ptr[i+1];
-            int rsz = (_size-i);
-            for(int j = 0; j < rsz; j++)
-            {
-              ptrDst[j] = ptrSrc[j];
-            }
-            if(rsz > 0)
-            {
-              _size--;
-              i--;
-            }
-          }
-        }
-        _ptr[_size] = 0;
-        return _size;
-}
-//**************************************************
-int HexToByte(char *ptr)
-{
-   char ch  = *ptr++;
-   char k   = 0;
-   char result[2] = {0,0};
-
-    while(k < 2)
-    {
-      if( (ch >= 'A') && (ch <= 'F') )
-      {  result[k] = (ch - 'A') + 10; }
-      else if( (ch >= '0') && (ch <= '9') )
-      {  result[k] = ch - '0';}
-      else
-      {  return -1;}
-      ch = *ptr++;
-      k++;
-    }
-    return (result[0] <<= 4) + result[1];
-}
-//**************************************************
-void ByteToHex(char *HEX, char BYTE)
-{
- char ch = (BYTE >> 4) & 0x0F;
- char k  = 0;
-
-   while(k < 2)
-   {
-     if(ch > 9)
-     {  *HEX++ = ch + 'A' - 10;}
-     else
-     {  *HEX++ = ch + '0';}
-
-     ch = BYTE & 0x0F;
-     k++;
-   }
-   HEX = NULL;
-}
-//**************************************************
 void reboot(sProgrammData *programmData)
 {
     u64 totalMS;
@@ -248,7 +182,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 		}
 		else if(Ql_strcmp(src_str, "cmd update firmware by ftp") == 0)
 		{
-			static ST_GprsConfig  m_gprsCfg;
+
 			//u8 m_URL_Buffer[512];
 			//ftp://hostname/filePath/fileName:port@username:password
 			s32 strLen = Ql_sprintf(tmp_buff, "ftp://%s%s%s:%d@%s:%s",
@@ -261,13 +195,20 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 					);
 
 			//strLen = Ql_sprintf(m_URL_Buffer, "ftp://%s%s%s:%s@%s:%s",FTP_SVR_ADDR, FTP_SVR_PATH, FTP_FILENAME, FTP_SVR_PORT, FTP_USER_NAME, FTP_PASSWORD);
+			ST_GprsConfig apnCfg;
+			Ql_memset(&apnCfg, 0x0, sizeof(apnCfg));
 
-            Ql_strcpy(m_gprsCfg.apnName, 	sett_in_ram->gsmSettings.gprsApn);
-            Ql_strcpy(m_gprsCfg.apnUserId, 	sett_in_ram->gsmSettings.gprsUser);
-            Ql_strcpy(m_gprsCfg.apnPasswd, 	sett_in_ram->gsmSettings.gprsPass);
+			//Ql_memcpy(apnCfg.apnName, 	sett_in_ram->gsmSettings.gprsApn,  Ql_strlen(sett_in_ram->gsmSettings.gprsApn));
+			//Ql_memcpy(apnCfg.apnUserId, 	sett_in_ram->gsmSettings.gprsUser, Ql_strlen(sett_in_ram->gsmSettings.gprsUser));
+			//Ql_memcpy(apnCfg.apnPasswd, 	sett_in_ram->gsmSettings.gprsPass, Ql_strlen(sett_in_ram->gsmSettings.gprsPass));
 
-            APP_DEBUG("Ql_FOTA_StartUpgrade url=[%s]", tmp_buff);
-            Ql_FOTA_StartUpgrade(tmp_buff, &m_gprsCfg, NULL);
+			Ql_strcpy(apnCfg.apnName, 	sett_in_ram->gsmSettings.gprsApn);
+			Ql_strcpy(apnCfg.apnUserId, 	sett_in_ram->gsmSettings.gprsUser);
+			Ql_strcpy(apnCfg.apnPasswd, 	sett_in_ram->gsmSettings.gprsPass);
+
+
+            APP_DEBUG("Ql_FOTA_StartUpgrade url=[%s], apnName=[%s] apnUserId=[%s] apnPasswd=[%s]\r\n", tmp_buff, apnCfg.apnName, apnCfg.apnUserId, apnCfg.apnPasswd);
+            Ql_FOTA_StartUpgrade(tmp_buff, &apnCfg, NULL);
 			ret = tmp_buff;
 		}
 		else if(Ql_strcmp(src_str, "cmd deep sleep mode") == 0)
@@ -512,22 +453,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
-    	  else if(Ql_strcmp(cmd, "sertimeout") == 0)
-    	  {
-    		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 0){
-    			  sett_in_ram->serPortDataTimeout = timeout;
-    			  r = TRUE;
-    		  }
-    	  }
-    	  else if(Ql_strcmp(cmd, "gsmtimeout") == 0)
-    	  {
-    		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 0){
-    			  sett_in_ram->gsmPortDataTimeout = timeout;
-    			  r = TRUE;
-    		  }
-    	  }
+
     	  else if(Ql_strcmp(cmd, "baudrate") == 0)
     	  {
     		  s32 speed = Ql_atoi(val);
@@ -571,15 +497,23 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  else if(Ql_strcmp(cmd, "toreconnect") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout >= 180){ // 3 min
+    		  if(timeout >= 120){ // 2 min
     			  sett_in_ram->secondsToReconnect = timeout;
     			  r = TRUE;
     		  }
     	  }
-    	  else if(Ql_strcmp(cmd, "toping") == 0)
+    	  else if(Ql_strcmp(cmd, "duration") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value >= 30){//1 min
+    			  sett_in_ram->secondsOfDuration = value;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout >= 60){ // 1 min
+    		  if(timeout >= 30){ // 0.5 min
     			  sett_in_ram->secondsToPing = timeout;
     			  r = TRUE;
     		  }
@@ -767,19 +701,9 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
-    else if(Ql_strcmp(cmd, "sertimeout") == 0)
+    else if(Ql_strcmp(cmd, "duration") == 0)
     {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->serPortDataTimeout);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "gsmtimeout") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->gsmPortDataTimeout);
+	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsOfDuration);
       Ql_strcpy(tmp_buff, "\r\n");
       Ql_strcat(tmp_buff, cmd);
       Ql_strcat(tmp_buff, "=");
@@ -850,7 +774,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
-    else if(Ql_strcmp(cmd, "toping") == 0)
+    else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     {
 	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToPing);
       Ql_strcpy(tmp_buff, "\r\n");
@@ -922,7 +846,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     }
     else if(Ql_strcmp(cmd, "input1 value") == 0)
     {
-    	Ql_sprintf(tbuff ,"%d", programmData->in1State);
+    	Ql_sprintf(tbuff ,"%d", programmData->dataState.in1);
     	Ql_strcpy(tmp_buff, "\r\n");
       	Ql_strcat(tmp_buff, cmd);
       	Ql_strcat(tmp_buff, "=");
@@ -932,7 +856,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     }
     else if(Ql_strcmp(cmd, "input2 value") == 0)
     {
-    	Ql_sprintf(tbuff ,"%d", programmData->in2State);
+    	Ql_sprintf(tbuff ,"%d", programmData->dataState.in2);
     	Ql_strcpy(tmp_buff, "\r\n");
       	Ql_strcat(tmp_buff, cmd);
       	Ql_strcat(tmp_buff, "=");
@@ -942,7 +866,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     }
     else if(Ql_strcmp(cmd, "termo value") == 0 || Ql_strcmp(cmd, "temp value") == 0)
     {
-    	Ql_sprintf(tbuff ,"%f", programmData->tempValue);
+    	Ql_sprintf(tbuff ,"%f", programmData->dataState.temp);
     	Ql_strcpy(tmp_buff, "\r\n");
       	Ql_strcat(tmp_buff, cmd);
       	Ql_strcat(tmp_buff, "=");
