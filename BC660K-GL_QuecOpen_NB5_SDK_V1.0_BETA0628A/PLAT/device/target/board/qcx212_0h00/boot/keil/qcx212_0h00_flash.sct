@@ -1,0 +1,112 @@
+#! armcc -E
+#include "mem_map.h"
+
+LR_IROM1 APP_FLASH_LOAD_ADDR APP_FLASH_LOAD_SIZE  {    ; load region size_region
+  UNLOAD_IROM APP_FLASH_LOAD_ADDR APP_FLASH_LOAD_SIZE  {  ; load address = execution address
+   *.o (RESET, +First)
+   *(.phyCodeFlash_COMN)
+   *(.phyCodeFlash_ICS)
+   *(.phyCodeFlash_UL)
+   *(.phyCodeFlash_RXDFE)
+   *(.phyCodeFlash_CE)
+   *(.phyCodeFlash_DE)
+   *(.phyCodeFlash_AXC)
+   *(.phyCodeFlash_RF)
+   *(.phyCodeFlash_SCHD)
+   *(.phyCodeFlash_MACSF)
+   *(.phyCodeFlash_MEAS)
+   *(.phyCodeFlash_PMU)
+   *(.phyCodeFlash_OTDOA)
+   .(.phyCodeFlash_SQ)
+   *(.phyDataFlash)
+   .ANY (+RO)
+  }
+  UNLOAD_NOCACHE +0 ALIGN 128{
+  cache*.o (+RO)
+  }
+
+  LOAD_IRAM1 0x00004000  {  ; code in ram
+  *(.phyCodeSram)
+  *(.ramCode)
+;   memmove.o (+RO)
+  }
+  LOAD_IRAM2 +0  {  ; code in ram
+  *(.phyCodeSram2)
+  *(.ramCode2)
+  }
+  ScatterAssert(ImageLimit(LOAD_IRAM2) <= 0x0000B804)
+  
+  LOAD_DRAM_MCURESEVED 0x0000B804 {	; Mcu Rw and ZI
+  *(.mcuRWData)
+  *(.mcuZIData)
+  }
+
+  LOAD_DRAM_SHARED +0 0x030000  {  ; RW data
+  *(.RTTmem)
+  *(.phyDataZI)
+  *(.coreTaskStack)
+  .ANY (+RW +ZI)
+  }
+  ScatterAssert(ImageLimit(LOAD_DRAM_SHARED) < HEAP_MEM_MAX_START_ADDR)
+  
+
+  LOAD_DRAM_BSP 0x041000 {   ; RW and ZI used only when wake up from hibernate
+  bsp_spi.o(+RW +ZI)
+;  cache_qcx212.o(+RW +ZI)
+  flash_qcx212.o(+RW +ZI)
+  flash_qcx212_rt.o(+RW +ZI)
+;  qspi_qcx212.o(+RW +ZI)
+;  gpio_qcx212.o(+RW +ZI)
+  gpr_qcx212.o(+RW +ZI)
+  ecpm_qcx212.o(+RW +ZI)
+  bsp.o(+RW +ZI)
+  plat_config.o(+RW +ZI)
+  system_qcx212.o(+RW +ZI)
+  unilog_qcx212.o(+RW +ZI)
+  pad_qcx212.o(+RW +ZI)
+  ic_qcx212.o(+RW +ZI)
+  ec_main.o(+RW +ZI)
+  hibtimer_qcx212.o(+RW +ZI)
+  slpman_qcx212.o(+RW +ZI)
+  bsp_usart.o(+RW +ZI)
+  pmu_qcx212.o(+RW +ZI)
+  timer_qcx212.o(+RW +ZI)
+  dma_qcx212.o(+RW +ZI)
+  adc_qcx212.o(+RW +ZI)
+  wdt_qcx212.o(+RW +ZI)
+  os_exception.o(+RW +ZI)
+  uart_qcx212.o(+RW +ZI)
+  batmonraw_qcx212.o(+RW +ZI)
+  }
+
+  UNLOAD_DRAM_FLASHMEM 0x00042000 0x1C00 { ; psphyFlashMem
+  *(.flashbackupdata)
+  }
+  UNLOAD_DRAM_SLPMEM 0x00043C00  {  ; Sleep Info
+  *(.sleepmem,+FIRST)
+  *(.ctTimermem)
+  *(.swcnt)
+  }
+  ScatterAssert(ImageLimit(UNLOAD_DRAM_SLPMEM) < EC_RESET_REASON_ADDR)
+
+  LOAD_IRAM_MCUVECTOR 0x00000000 0x64			{  ; Mcu Vector
+  *(.mcuVector)
+  }
+	
+  LOAD_IRAM_MCU 0x64							{  ; for simulation, 16K memory retention in sleep
+  *(.ramBootCode)
+  *(.mcuCode)
+  flash_qcx212.o (+RO)
+  qspi_qcx212.o (+RO)
+  }
+  UNLOAD_DRAM_USRNV 0x1000{
+  *(.usrNvMem)
+  }
+  LOAD_DRAM_MCU +0 {
+  *(.ramBootRWData)
+  *(.ramBootZIData)
+  }
+  UNLOAD_DRAM_PSPHYRET 0x00002800 0x001800  {  ; RW data
+  *(.psphyret_6k)
+  }
+}
