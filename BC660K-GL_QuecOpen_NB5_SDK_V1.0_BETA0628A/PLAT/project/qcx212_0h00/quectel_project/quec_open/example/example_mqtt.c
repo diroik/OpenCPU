@@ -45,7 +45,7 @@
 #include "ril.h"
 #include "ril_mqtt.h"
 #include "ql_dbg.h"
-#include "ql_power.h "
+#include "ql_power.h"
 #include "ql_ps.h"
 #include "ql_urc_register.h"
 

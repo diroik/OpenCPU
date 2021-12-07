@@ -890,7 +890,7 @@ EnumVals
 968,1581252707,0,0,QUECTEL_OCPU,Ql_SOC_CreateEx_4,P_ERROR,QCOMM_TRACE("[ LWIP ] Failed qlAddThisSocket ( ) \r\n ");
 968,1581252708,0,0,QUECTEL_OCPU,Ql_SOC_CreateEx_5,P_INFO,QCOMM_TRACE("[ LWIP ] ( contxtid = %d , socket_type = %d ) , socid = %d SUCCESS\r\n ",contextId,socketType,socid);
 968,1581252709,0,0,QUECTEL_OCPU,Ql_SOC_Connect_1,P_INFO,QCOMM_STRING("[ LWIP ] connect: addr = %s ",remoteIP);
-968,1581252710,0,0,QUECTEL_OCPU,Ql_SOC_Connect_2,P_INFO,QCOMM_TRACE("[ LWIP ] connect: socketId = %d , port = %d£¬socketid:%d\r\n ",socketId,remotePort,socketid);
+968,1581252710,0,0,QUECTEL_OCPU,Ql_SOC_Connect_2,P_INFO,QCOMM_TRACE("[ LWIP ] connect: socketId = %d , port = %dï¿½ï¿½socketid:%d\r\n ",socketId,remotePort,socketid);
 968,1581252711,0,0,QUECTEL_OCPU,Ql_SOC_Connect_01,P_INFO,QCOMM_TRACE("[ xdk ] connect: [ 0 ] = %x , [ 1 ] = %x , [ 2 ] :%x , [ 3 ] = %x , [ 4 ] = %x , [ 5 ] :%x , [ 6 ] = %x , [ 7 ] = %x\r\n ",ipv6_address.sin6_addr.s6_addr[0],ipv6_address.sin6_addr.s6_addr[1],ipv6_address.sin6_addr.s6_addr[2],ipv6_address.sin6_addr.s6_addr[3],ipv6_address.sin6_addr.s6_addr[4],ipv6_address.sin6_addr.s6_addr[5],ipv6_address.sin6_addr.s6_addr[6],ipv6_address.sin6_addr.s6_addr[7]);
 968,1581252712,0,0,QUECTEL_OCPU,Ql_SOC_Connect_02,P_INFO,QCOMM_TRACE("[ xdk ] connect: [ 8 ] = %x , [ 9 ] = %x , [ 10 ] :%x , [ 11 ] = %x , [ 12 ] = %x , [ 13 ] :%x , [ 14 ] = %x , [ 15 ] = %x\r\n ",ipv6_address.sin6_addr.s6_addr[8],ipv6_address.sin6_addr.s6_addr[9],ipv6_address.sin6_addr.s6_addr[10],ipv6_address.sin6_addr.s6_addr[11],ipv6_address.sin6_addr.s6_addr[12],ipv6_address.sin6_addr.s6_addr[13],ipv6_address.sin6_addr.s6_addr[14],ipv6_address.sin6_addr.s6_addr[15]);
 968,1581252713,0,0,QUECTEL_OCPU,Ql_SOC_Connect_03,P_INFO,QCOMM_TRACE("[ xdk ] connect: [ 0 ] = %x , [ 1 ] = %x , [ 2 ] :%x , [ 3 ] = %x\r\n ",ipv6_address.sin6_addr.un.u32_addr[0],ipv6_address.sin6_addr.un.u32_addr[1],ipv6_address.sin6_addr.un.u32_addr[2],ipv6_address.sin6_addr.un.u32_addr[3]);
@@ -8375,7 +8375,7 @@ EnumVals
 735,1459094210,0,0,TCPIP_LWIP,netif_poll_1,P_ERROR,ECOMM_TRACE("bogus pbuf: len ! = tot_len but next = = NULL! ");
 735,1459094211,0,0,TCPIP_LWIP,netif_poll_2,P_ERROR,ECOMM_TRACE("netif->loop_cnt_current underflow ");
 735,1459094212,0,0,TCPIP_LWIP,netif_poll_3,P_ERROR,ECOMM_TRACE("should not be null since first ! = last! ");
-735,1459094213,0,0,TCPIP_LWIP,netif_alloc_client_data_id_1,P_ERROR,ECOMM_TRACE("Increase LWIP_NUM_NETIF_CLIENT_DATA in lwipopts.h ");
+735,1459094213,0,0,TCPIP_LWIP,netif_alloc_client_data_id_1,P_ERROR,ECOMM_TRACE("Increase LWIP_NUM_NETIF_CLIENT_DATA in lwipopts.h");
 735,1459094214,0,0,TCPIP_LWIP,netif_ip6_addr_set_1,P_ERROR,ECOMM_TRACE("addr6 ! = NULL ");
 735,1459094215,0,0,TCPIP_LWIP,netif_ip6_addr_set_parts_1,P_ERROR,ECOMM_TRACE("addr6 ! = NULL or invalid index ");
 735,1459094216,0,0,TCPIP_LWIP,netif_ip6_addr_set_parts_2,P_INFO,ECOMM_TRACE("netif_ip6_addr_set: netif address being changed ");
@@ -9273,7 +9273,7 @@ EnumVals
 772,1478492276,0,0,PLA_DRIVER,pmuTrySleep1_7,P_VALUE,ECOMM_TRACE("Phy int come ");
 772,1478492277,0,0,PLA_DRIVER,pmuUpdateUserNVMem_1,P_VALUE,ECOMM_TRACE("User NVMem Update Request ");
 772,1478492278,0,0,PLA_DRIVER,pmuRestoreUserNVMem_1,P_VALUE,ECOMM_TRACE("can ' t read NVM: ' slp_nvm ' don ' t exist ");
-772,1478492279,0,0,PLA_DRIVER,pmuRestoreUserNVMem_2,P_VALUE,ECOMM_TRACE("read NVM length is error , expect len: %d real read lenï¼?d ",sizeof(usrNvMem)-32,Count);
+772,1478492279,0,0,PLA_DRIVER,pmuRestoreUserNVMem_2,P_VALUE,ECOMM_TRACE("read NVM length is error , expect len: %d real read lenï¿½?d ",sizeof(usrNvMem)-32,Count);
 772,1478492280,0,0,PLA_DRIVER,pmuRestoreUserNVMem_3,P_VALUE,ECOMM_TRACE("Recover User NVMem ");
 772,1478492281,0,0,PLA_DRIVER,pmuWriteUserNVMem_1,P_VALUE,ECOMM_TRACE("User NVMem Flushed into flash %d ",usrNvMem[0]);
 772,1478492282,0,0,PLA_DRIVER,pmuEnterTickless_81,P_SIG,ECOMM_TRACE("Hibernate Failed reason = %u ",result);
@@ -9321,7 +9321,7 @@ EnumVals
 772,1478492324,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_8,P_VALUE,ECOMM_TRACE("User Timer In Advance ID = %d , In Advance SC Cycles = %d ",HibEnv.timerlist_hib_usr[i].timerId,remain_2048_swcnt);
 772,1478492325,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_9,P_VALUE,ECOMM_TRACE("Check Wakeup Timer User Id = %d , %d , remain 32 k cycles = %d about %d ms\n ",HibEnv.timerlist_hib_usr[i].timerId,HibEnv.timerlist_hib_usr[i].swcnt_2048_timeout,remain_2048_swcnt,remain_ms);
 772,1478492326,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_10,P_VALUE,ECOMM_TRACE("PmuSetWhichTimerIntoAon User Timer Nearly trigger , Id = %d remain = %d ms ",HibEnv.timerlist_hib_usr[i].timerId,remain_ms);
-772,1478492327,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_11,P_VALUE,ECOMM_TRACE("Aon Timer 7 need wakeup£¬remain = %d ms ",remain_ms);
+772,1478492327,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_11,P_VALUE,ECOMM_TRACE("Aon Timer 7 need wakeupï¿½ï¿½remain = %d ms ",remain_ms);
 772,1478492328,0,0,PLA_DRIVER,timerlist_hib_getnearest_2,P_VALUE,ECOMM_TRACE("remain_sc_cycles = %d , ID = %d ",remain_sc_cycles,HibEnv.timerlist_hib[i].timerId);
 772,1478492329,0,0,PLA_DRIVER,timerlist_hib_getnearest_3,P_VALUE,ECOMM_TRACE("AONTarget_H = 0x%x , AONTarget_L = 0x%x , SWCNT_H = 0x%x , SWCNT_L = 0x%x ",SWCNT_H(targetCnt),SWCNT_L(targetCnt),SWCNT_H(cur_2048_swcnt),SWCNT_L(cur_2048_swcnt));
 772,1478492330,0,0,PLA_DRIVER,timerlist_hib_getnearest_4,P_VALUE,ECOMM_TRACE("Aon Timer nearest = %d Second ",(remain_sc_cycles>>11));
@@ -9423,8 +9423,8 @@ EnumVals
 772,1478492427,0,0,PLA_DRIVER,main_entry_11,P_WARNING,ECOMM_TRACE("Re Boot Up from %u -> Unilog Print OK ",boot_flag);
 772,1478492428,0,0,PLA_DRIVER,Enter_Active_1_QC,P_VALUE,QCOMM_TRACE("QCX212 Active SmallImg ");
 772,1478492429,0,0,PLA_DRIVER,Enter_Active_3_QC,P_VALUE,QCOMM_TRACE("QCX212 Active Sleep1 @ SC = %u ",PmuSlowCntRead());
-772,1478492430,0,0,PLA_DRIVER,pmuRestoreUserNVMem_2_QC,P_VALUE,QCOMM_TRACE("read NVM length is error , expect len: %d real read lenï¼?d ",sizeof(usrNvMem)-32,Count);
-772,1478492431,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_11_QC,P_VALUE,QCOMM_TRACE("Aon Timer 7 need wakeup£¬remain = %d ms ",remain_ms);
+772,1478492430,0,0,PLA_DRIVER,pmuRestoreUserNVMem_2_QC,P_VALUE,QCOMM_TRACE("read NVM length is error , expect len: %d real read lenï¿½?d ",sizeof(usrNvMem)-32,Count);
+772,1478492431,0,0,PLA_DRIVER,timerlist_hib_check_wakeup_11_QC,P_VALUE,QCOMM_TRACE("Aon Timer 7 need wakeupï¿½ï¿½remain = %d ms ",remain_ms);
 772,1478492432,0,0,PLA_DRIVER,Enter_Active_2_QC,P_VALUE,QCOMM_TRACE("QCX212 Active FullImg @ SC = %u ",PmuSlowCntRead());
 3,1075314689,0,0,PHY_ULPATH,phyRaCelevelSelect,P_SIG,ECOMM_TRACE("Current CE = %d , lastSuccCE = %d ",pMacRaInfo->ceLevel,pMacRaInfo->lastSuccCE);
 3,1075314690,0,0,PHY_ULPATH,PhyMacPreambleProc_1,P_SIG,ECOMM_TRACE("CE level = %d , RaContentionFlag = %d ( contention free ( 0 ) / contention based ( 1 ) ) , CarrierIndex = %d ( anchor carrier ( 0 ) / non-anchor carrier ( 1 -15 ) ) , SubCarrierIndex = %d , RachTransCnt of current CE = %d ",pMacRaInfo->ceLevel,pMacRaInfo->raContentionFlag,pMacRaInfo->carrierIndex,subCarrier,pMacRaInfo->preambleTransCntCE+1);

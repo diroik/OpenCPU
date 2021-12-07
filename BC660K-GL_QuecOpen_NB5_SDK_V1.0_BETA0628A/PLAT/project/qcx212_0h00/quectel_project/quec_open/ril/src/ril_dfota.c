@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include "ril_dfota.h"
 #include "ril_system.h"
-#include "ril.h "
+#include "ril.h"
 #include "ql_type.h"
 #include "cmsis_os2.h"
 #include "ql_type.h"

@@ -39,7 +39,7 @@
 #include "cmsis_os2.h"
 #include "ql_dbg.h"
 
-#include "ril.h "
+#include "ril.h"
 #include "ril_network.h"
 #include "ril_util.h"
 #include "ril_system.h"

@@ -125,12 +125,15 @@ void proc_main_task(void)
 	maintask_queue = osMessageQueueNew(MAINTASK_QUEUE_LEN, sizeof(ST_MSG), NULL);
 	APP_DEBUG("<-- QuecOpen: EINT Example -->\r\n");
 
-	ret = Ql_EINT_Init(eintPin1 ,EINT_EDGE_RISING,50,EintCallback);
-	APP_DEBUG("eintPin1 EINT_Init ret:%d,%d\r\n",ret,eintPin1);
-	ret = Ql_EINT_Init(eintPin2 ,EINT_EDGE_RISING,1000,EintCallback);
-	APP_DEBUG("eintPin2 EINT_Init ret:%d,%d\r\n",ret,eintPin2);
-	ret = Ql_EINT_Init(eintPin3 ,EINT_EDGE_RISING,1000,EintCallback);
-	APP_DEBUG("eintPin3 EINT_Init ret:%d,%d\r\n",ret,eintPin3);
+	ret = Ql_EINT_Init(eintPin1, EINT_EDGE_RISING, 50, EintCallback);
+	APP_DEBUG("eintPin1 EINT_Init ret:%d,%d\r\n", ret, eintPin1);
+
+	ret = Ql_EINT_Init(eintPin2, EINT_EDGE_RISING, 1000, EintCallback);
+	APP_DEBUG("eintPin2 EINT_Init ret:%d,%d\r\n", ret, eintPin2);
+
+	ret = Ql_EINT_Init(eintPin3, EINT_EDGE_RISING, 1000, EintCallback);
+	APP_DEBUG("eintPin3 EINT_Init ret:%d,%d\r\n", ret, eintPin3);
+
     while (1)
     {
     	if(osOK == osMessageQueueGet(maintask_queue,(void *)&msg, NULL, osWaitForever))
@@ -138,31 +141,31 @@ void proc_main_task(void)
     		switch(msg.message)
     			{
 				case PINNAME_I2C_SCL:
-					APP_DEBUG("eintPin1 trigger gpioInterruptCount1:%d\r\n",gpioInterruptCount1);
+					APP_DEBUG("eintPin1 trigger gpioInterruptCount1:%d\r\n", gpioInterruptCount1);
 					if(gpioInterruptCount1 > 5)
 					{
 						ret = Ql_EINT_Uninit(eintPin1);
-						APP_DEBUG("eintPin1 EINT_UnInit ret:%d\r\n",ret);
+						APP_DEBUG("eintPin1 EINT_UnInit ret:%d\r\n", ret);
 					}
 					break;
 				case PINNAME_GPIO2:
-					APP_DEBUG("eintPin2 trigger gpioInterruptCount2:%d\r\n",gpioInterruptCount2);
+					APP_DEBUG("eintPin2 trigger gpioInterruptCount2:%d\r\n", gpioInterruptCount2);
 					if(gpioInterruptCount2 > 5)
 					{
 						ret = Ql_EINT_Uninit(eintPin2);
-						APP_DEBUG("eintPin2 EINT_UnInit ret:%d\r\n",ret);
+						APP_DEBUG("eintPin2 EINT_UnInit ret:%d\r\n", ret);
 					}			
 					break;
 				case PINNAME_SPI_CS:
-					APP_DEBUG("eintPin3 trigger gpioInterruptCount3:%d\r\n",gpioInterruptCount3);
+					APP_DEBUG("eintPin3 trigger gpioInterruptCount3:%d\r\n", gpioInterruptCount3);
 					if(gpioInterruptCount3 > 5)
 					{
 						ret = Ql_EINT_Uninit(eintPin3);
-						APP_DEBUG("eintPin3 EINT_UnInit ret:%d\r\n",ret);
+						APP_DEBUG("eintPin3 EINT_UnInit ret:%d\r\n", ret);
 					}			
 					break;
 				default:
-					APP_DEBUG("default message:%d\r\n",msg.message);
+					APP_DEBUG("default message:%d\r\n", msg.message);
 					break;
     			}
 		}

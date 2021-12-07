@@ -67,7 +67,7 @@ void* ql_get_task_enter(void);
 #undef TASK_DEFINITION_END
 
 
-#if defined( TASK_DEFINITION)
+#if defined(TASK_DEFINITION)
 #define TASK_DEFINITION_BEGIN  custom_task_definition_t custom_tasks[] = {
 #define TASK_ITEM(task_name, stack_size, task_prio, task_entry, task_init)  {{task_name, 0, NULL, 0, NULL, stack_size, task_prio, 0, 0}, (osThreadFunc_t)task_entry, NULL, task_init},
 #define TASK_DEFINITION_END {{"END", 0, NULL, 0, NULL, 0, 0, 0, 0}, (osThreadFunc_t)NULL, NULL, NULL},};

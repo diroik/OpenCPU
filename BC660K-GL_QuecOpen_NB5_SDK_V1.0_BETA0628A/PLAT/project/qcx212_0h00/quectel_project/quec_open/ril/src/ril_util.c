@@ -34,8 +34,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
-#include "ril_util.h "
-#include "ril.h "
+#include "ril_util.h"
+#include "ril.h"
 
 s32 Ql_StrPrefixMatch(const char* str, const char *prefix)
 {
