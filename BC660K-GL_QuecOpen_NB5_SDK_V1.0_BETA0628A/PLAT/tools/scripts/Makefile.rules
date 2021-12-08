@@ -1,0 +1,288 @@
+# default target
+all::
+
+include $(TOP)/PLAT/tools/scripts/Makefile.vars
+
+ifeq ($(TOOLCHAIN),GCC)
+BUILDDIR ?= $(TOP)/PLAT/gccout/$(TARGET)/$(PROJECT)
+ifeq ($(BUILD_CREATE_OCPU_PREBUILD_LIB),y)
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),y)
+BUILDDIR := $(TOP)/PLAT/gccout
+endif
+endif
+endif
+
+ifeq ($(TOOLCHAIN),ARMCC)
+BUILDDIR ?= $(TOP)/PLAT/out/$(TARGET)/$(PROJECT)
+ifeq ($(BUILD_CREATE_OCPU_PREBUILD_LIB),y)
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),y)
+BUILDDIR := $(TOP)/PLAT/out
+BINNAME := $(APPBINNAME)
+endif
+endif
+endif
+
+LIBDIR   ?= $(TOP)/PLAT/prebuild
+
+
+#-------------------------------------------------------------------------------
+#		Rules
+#-------------------------------------------------------------------------------
+include $(TOP)/PLAT/project/$(TARGET)/$(PROJECT)/quec_open/Makefile.inc
+include $(TOP)/PLAT/device/target/Makefile.inc
+include $(TOP)/PLAT/os/Makefile.inc
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+include $(TOP)/PLAT/driver/Makefile.inc	
+include $(TOP)/PLAT/middleware/developed/Makefile.inc
+include $(TOP)/PLAT/middleware/quectel/Makefile.inc
+include $(TOP)/PLAT/project/$(TARGET)/$(PROJECT)/mainapp/Makefile.inc
+endif
+include $(TOP)/PLAT/middleware/thirdparty/Makefile.inc
+
+ifeq ($(BUILD_USE_PREBUILD_LIB),n)
+ifeq ($(BUILD_FW),y)
+ifeq ($(BUILD_ONLY_USE_PHY_LIB),n)
+include $(TOP)/FIRMWARE/SRC/Makefile.inc
+else
+include $(LIBDIR)/FW/Makefile.inc
+endif
+endif
+ifeq ($(BUILD_PS),y)
+include $(TOP)/PROTOCOL/SRC/ps/Makefile.inc
+include $(TOP)/PROTOCOL/SRC/tcpip/Makefile.inc
+include $(TOP)/PROTOCOL/SRC/psl1/Makefile.inc
+endif
+else
+ifeq ($(BUILD_FW),y)
+include $(LIBDIR)/FW/Makefile.inc
+endif
+ifeq ($(BUILD_PS),y)
+include $(LIBDIR)/PS/Makefile.inc
+endif
+include $(LIBDIR)/PLAT/Makefile.inc
+endif
+
+
+vpath %.c $(TOP)
+vpath %.s $(TOP)
+
+OBJS := $(addprefix $(BUILDDIR)/, $(obj-y))
+LIBS := $(addprefix $(BUILDDIR)/lib/,$(lib-y))
+
+-include $(OBJS:.o=.d)
+
+.PHONY: all build clean size cleanall
+
+all:: build
+
+ifeq ($(TOOLCHAIN),GCC)
+
+build: $(BUILDDIR)/$(BINNAME).elf \
+	$(BUILDDIR)/$(BINNAME).symbols \
+	$(BUILDDIR)/$(BINNAME).bin
+	
+endif
+
+ifeq ($(TOOLCHAIN),ARMCC)
+
+build: $(BUILDDIR)/$(BINNAME).axf
+
+endif
+
+
+
+$(BUILDDIR):
+	@mkdir -p $(BUILDDIR)
+
+$(LIBDIR):
+	@mkdir -p $(LIBDIR)
+
+ifeq ($(TOOLCHAIN),GCC)
+
+$(LIBDIR)/%.d: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) DEP $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -MM $< -MT $(basename $@).o -o $(basename $@).d
+
+$(LIBDIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -c $< -o $@
+
+$(LIBDIR)/%.d: %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) DEP $<
+	$(Q)$(CC) $(CFLAGS_ASM) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -MM $< -MT $(basename $@).o -o $(basename $@).d
+
+$(LIBDIR)/%.o: %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS_ASM) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -c $< -o $@
+
+$(BUILDDIR)/%.d: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) DEP $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -MM $< -MT $(basename $@).o -o $(basename $@).d
+
+$(BUILDDIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -c $< -o $@
+
+$(BUILDDIR)/%.d: %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) DEP $<
+	$(Q)$(CC) $(CFLAGS_ASM) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -MM $< -MT $(basename $@).o -o $(basename $@).d
+
+$(BUILDDIR)/%.o: %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS_ASM) $(CFLAGS_CPU) $(CFLAGS_INC) $(CFLAGS_DEFS) -c $< -o $@
+
+$(BUILDDIR)/$(BINNAME).elf: $(OBJS) $(LIBS) $(linker-script-y)
+	$(ECHO) LINK $@
+	$(Q)$(CC) $(LDFLAGS) $(CFLAGS_CPU) $(CFLAGS_DEFS) -T$(linker-script-y) -Wl,-Map,$(BUILDDIR)/$(BINNAME).map -o $@ $(OBJS) -Wl,--start-group $(LIBS) -Wl,--end-group -Wl,--no-undefined
+
+$(BUILDDIR)/$(BINNAME).symbols: $(BUILDDIR)/$(BINNAME).elf
+	$(Q)$(NM) $< >$@
+
+$(BUILDDIR)/$(BINNAME).bin: $(BUILDDIR)/$(BINNAME).elf
+	$(ECHO) OBJCOPY $@
+	$(Q)$(OBJCOPY) -O binary $< $@
+	@$(OBJDUMP) -d $< > $(BUILDDIR)/$(BINNAME).txt
+	@$(SIZE) $(OBJECTS) $(BUILDDIR)/$(BINNAME).elf
+
+clean:
+	@rm -rf $(BUILDDIR)
+
+cleanall:
+	$(foreach dir, $(wildcard $(TOP)/PLAT/out/*), @rm -rf $(dir))
+
+size: $(BUILDDIR)/$(BINNAME).elf
+	@$(SIZE) $(OBJECTS) $(BUILDDIR)/$(BINNAME).elf
+
+
+endif
+
+ifeq ($(TOOLCHAIN),ARMCC)
+
+$(LIBDIR)/%.o %.d: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_INC) $(CFLAGS_DEFS) $< --depend $(basename $@).d -o $@
+
+$(LIBDIR)/%.o %.d : %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) AS $<
+	$(Q)$(AS) $(ASMFLAGS) $(CFLAGS_INC) $(CFLAGS_DEFS)  $< --depend $(basename $@).d -o $@
+
+$(BUILDDIR)/%.o %.d: %.c
+	@mkdir -p $(dir $@)
+	$(ECHO) CC $<
+	$(Q)$(CC) $(CFLAGS) $(CFLAGS_INC) $(CFLAGS_DEFS) $< --depend $(basename $@).d -o $@
+
+$(BUILDDIR)/%.o %.d : %.s
+	@mkdir -p $(dir $@)
+	$(ECHO) AS $<
+	$(Q)$(AS) $(ASMFLAGS) $(CFLAGS_INC) $(CFLAGS_DEFS)  $< --depend $(basename $@).d -o $@
+
+$(BUILDDIR)/$(BINNAME).axf: $(OBJS) $(LIBS) $(linker-script-y)
+	$(ECHO) LINK $@
+	$(Q)$(LD) $(LDFLAGS) --entry=Reset_Handler --scatter $(linker-script-y) -o $@ $(OBJS) $(LIBS) $(PREBUILDLIBS) --list $(BUILDDIR)/$(BINNAME).map --symdefs=$(BUILDDIR)/$(BINNAME).symbols
+	$(Q)$(ELF) --bin --output $(BUILDDIR)/$(BINNAME).bin $(BUILDDIR)/$(BINNAME).axf
+	$(Q)$(ELF) $(ELFFLAGS) --output $(BUILDDIR)/$(BINNAME).hex $(BUILDDIR)/$(BINNAME).axf
+	$(Q)$(ELF) -c $(BUILDDIR)/$(BINNAME).axf -o $(BUILDDIR)/$(BINNAME).txt
+#>>>>>> @Randy.LI@2020/10/24 Optimize Automatic Generate Software Packet mechanism - START <<<<<<
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+	@mkdir -p $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+	@mkdir -p $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	mv  $(BUILDDIR)/*.axf $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	mv  $(BUILDDIR)/*.hex $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	mv  $(BUILDDIR)/*.map $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	mv  $(BUILDDIR)/*.symbols $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	mv  $(BUILDDIR)/*.txt $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/dbg
+	cp  $(BUILDDIR)/*.bin $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+	cp  $(TOP)/PLAT/tools/flash_download.ini $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+	cp  $(TOP)/PLAT/tools/MergeRfTable.bin $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+	cp  $(TOP)/PLAT/tools/comdb.txt $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+else
+	@mkdir -p $(BUILDDIR)/$(BINNAME)
+	@mkdir -p $(BUILDDIR)/$(BINNAME)/dbg
+	mv  $(BUILDDIR)/*.axf $(BUILDDIR)/$(BINNAME)/dbg
+	mv  $(BUILDDIR)/*.hex $(BUILDDIR)/$(BINNAME)/dbg
+	mv  $(BUILDDIR)/*.map $(BUILDDIR)/$(BINNAME)/dbg
+	mv  $(BUILDDIR)/*.symbols $(BUILDDIR)/$(BINNAME)/dbg
+	mv  $(BUILDDIR)/*.txt $(BUILDDIR)/$(BINNAME)/dbg
+	cp  $(BUILDDIR)/*.bin $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/flash_download.ini $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/MergeRfTable.bin $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/comdb.txt $(BUILDDIR)/$(BINNAME)
+endif
+
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+ifeq ("$(findstring BETA,$(BINNAME))", "BETA")
+	cp  $(TOP)/PLAT/doc/Quectel_Disclaimer_for_Software_BETA_Version.pdf $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)
+endif
+endif
+
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+	sed -i "s|bootloader.bin|Bootloader_$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/flash_download.ini
+	sed -i "s|app.bin|$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/flash_download.ini
+else
+	sed -i "s|bootloader.bin|Bootloader_$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)/flash_download.ini
+	sed -i "s|app.bin|$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)/flash_download.ini
+endif	
+
+#@Randy.LI@2020/10/24 Output the folder that can be released to customer safely.
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+	@mkdir -p $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+	mv  $(BUILDDIR)/*.bin $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+	cp  $(TOP)/PLAT/tools/flash_download.ini $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+	cp  $(TOP)/PLAT/tools/MergeRfTable.bin $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+	cp  $(TOP)/PLAT/tools/comdb.txt $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+else
+	@mkdir -p $(BUILDDIR)/$(BINNAME)
+	mv  $(BUILDDIR)/*.bin $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/flash_download.ini $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/MergeRfTable.bin $(BUILDDIR)/$(BINNAME)
+	cp  $(TOP)/PLAT/tools/comdb.txt $(BUILDDIR)/$(BINNAME)
+endif
+
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+ifeq ("$(findstring BETA,$(BINNAME))", "BETA")
+	cp  $(TOP)/PLAT/doc/Quectel_Disclaimer_for_Software_BETA_Version.pdf $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)
+endif
+endif
+
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+	sed -i "s|bootloader.bin|Bootloader_$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)/flash_download.ini
+	sed -i "s|app.bin|$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)_$(PROJ_RELNAME)/flash_download.ini
+else
+	sed -i "s|bootloader.bin|Bootloader_$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)/flash_download.ini
+	sed -i "s|app.bin|$(BINNAME).bin|g" $(BUILDDIR)/$(BINNAME)/flash_download.ini
+endif	
+
+# [Yance][2020.01.20][add for opencpu]
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),n)
+ifeq ($(BUILD_CREATE_OCPU_PREBUILD_LIB),y)
+	mv -f $(BUILDDIR)/lib/*.lib $(TOP)/PLAT/prebuild/PLAT/lib/keil
+	cp $(BUILDDIR)/$(BINNAME)_$(PROJ_SUBNAME)/Bootloader_$(BINNAME).bin $(TOP)/PLAT/tools/Bootloader.bin 
+endif
+endif
+
+ifeq ($(BUILD_USE_OCPU_PREBUILD_LIB),y)	
+	cp  $(TOP)/PLAT/tools/Bootloader.bin $(BUILDDIR)/$(BINNAME)/Bootloader_$(BINNAME).bin
+	cp  $(TOP)/PLAT/tools/Bootloader.bin $(BUILDDIR)/$(BINNAME)/Bootloader_$(BINNAME).bin
+endif
+#>>>>>> @Randy.LI@2020/10/24 Optimize Automatic Generate Software Packet mechanism - END   <<<<<<
+
+clean_tmp:
+	@rm -rf $(TOP)/PLAT/out/$(TARGET)/$(PROJECT)/lib
+	@rm -rf $(TOP)/PLAT/out/$(TARGET)/$(PROJECT)/PLAT
+clean:
+	@rm -rf $(BUILDDIR)
+cleanall:
+	$(foreach dir, $(wildcard $(TOP)/PLAT/out/*), @rm -rf $(dir))
+
+endif
+

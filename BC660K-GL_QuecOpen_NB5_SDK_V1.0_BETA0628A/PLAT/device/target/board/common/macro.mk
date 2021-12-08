@@ -1,0 +1,11 @@
+ifeq ($(FPGA_DEBUG),y)
+CFLAGS += -DFPGA_TEST
+endif
+
+ifeq ($(RF_ADI_USED_ENABLE),y)
+CFLAGS += -DRF_ADI_USED
+endif
+
+ifeq ($(BUILD_USE_PREBUILD_LIB),y)
+CFLAGS += -DSDK_REL_BUILD
+endif
