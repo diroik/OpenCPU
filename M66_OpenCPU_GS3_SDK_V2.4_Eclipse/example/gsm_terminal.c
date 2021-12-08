@@ -556,7 +556,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 
 				}
 				//u32 totalMinutes = programmData.dataState.totalSeconds/60;
-				APP_DEBUG("<--time_callback_onTimer: totalSeconds=%d.-->\r\n", programmData.dataState.totalSeconds);
+				//APP_DEBUG("<--time_callback_onTimer: totalSeconds=%d.-->\r\n", programmData.dataState.totalSeconds);
 				//u16 time_mode = programmSettings.ipSettings.mode % 100;
 			}
 		}
@@ -604,18 +604,16 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	    	programmData.pingCnt  = 0;
 	    	if(m_remain_len == 0 && m_pCurrentPos == NULL && m_socketid >= 0)
 	        {
-	        	char tmp_buff[200] = {0};
+	        	char tmp_buff[300] = {0};
 	        	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
+
+	        	//if(programmSettings.ipSettings.mode)
 	        	s32 len = toJSON(tmp_buff, &programmData.dataState);
 	        	if(len > 0 && len <= sizeof(tmp_buff)){
 	        		m_pCurrentPos = m_send_buf;
 	        		Ql_memcpy(m_pCurrentPos, tmp_buff, len);
 	        		m_remain_len += len;
 	        		m_pCurrentPos[m_remain_len] = 0;
-
-		        	//m_pCurrentPos[0] = 0;//send 1 byte
-		        	//m_remain_len++;
-
 	        		APP_DEBUG("<-- Send ping [%s] -->\r\n", m_pCurrentPos);
 	        	}
 	        }
@@ -673,9 +671,24 @@ void callback_socket_connect(s32 socketId, s32 errCode, void* customParam )
         //////// send init packet
         programmData.pingCnt  = 0;//reload ping cnt
 
+
+        programmData.lastPacket.pid = 0;
+        programmData.lastPacket.timeStamp = programmData.dataState.totalSeconds;
+
 		m_pCurrentPos = m_send_buf;
+		m_remain_len = 0;
+
+		bShort tmp;
+		tmp.Data_s = Ql_strlen(programmData.dataState.imei) + Ql_strlen(programmData.dataState.iccid) + 1;
+
+		m_pCurrentPos[m_remain_len++] = 0;
+		m_pCurrentPos[m_remain_len++] = 0x0B;
+
+		m_pCurrentPos[m_remain_len++] = tmp.Data_b[1];
+		m_pCurrentPos[m_remain_len++] = tmp.Data_b[0];
+
 		u32 len = Ql_strlen(programmData.dataState.imei);
-		Ql_memcpy(m_pCurrentPos, programmData.dataState.imei, len);
+		Ql_memcpy((m_pCurrentPos + m_remain_len), programmData.dataState.imei, len);
 		m_remain_len += len;
 
 		*(m_pCurrentPos + m_remain_len) = 0xFF;
@@ -759,7 +772,9 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
         else if(ret <= RECV_BUFFER_LEN)
         {
         	char tmp_buff[300] = {0};
-            APP_DEBUG("<-- Receive data from sock(%d), len(%d) and write to UART_PORT3 -->\r\n", socketId, ret);
+        	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
+
+            APP_DEBUG("<-- Receive data from sock(%d), len(%d) -->\r\n", socketId, ret);
     		char *answer = Parse_Command(m_recv_buf, tmp_buff, &programmSettings, &programmData);
     		if( answer != NULL)
     		{
@@ -768,12 +783,23 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
 
     			//send answer to server
     			m_pCurrentPos = m_send_buf;
-    			//Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
     			Ql_memcpy(m_pCurrentPos + m_remain_len, answer, alen);//!!!
     			m_remain_len += alen;
     		}
-    		else{
-    			Ql_UART_Write(UART_PORT3, m_recv_buf, ret);
+    		else
+    		{
+    			APP_DEBUG("<-- and write to UART_PORT3 mode=%d, ret=%d -->\r\n", programmSettings.ipSettings.mode, ret);
+    			if(programmSettings.ipSettings.mode == 101)
+    			{//with pid
+    				if(ret > 4 &&  AnalizePidPacket(m_recv_buf, ret, &programmData.lastPacket) == TRUE){
+    					programmData.lastPacket.timeStamp = programmData.dataState.totalSeconds;
+    					s32 nlen = (ret-4);
+    					Ql_UART_Write(UART_PORT3, (u8*)(m_recv_buf+4), nlen);
+    				}
+    			}
+    			else{
+    				Ql_UART_Write(UART_PORT3, m_recv_buf, ret);
+    			}
     		}
 
     		/*//сброс счетчика переконнекта, убрал тк влияет на логику переконнектов
@@ -1533,11 +1559,17 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 	APP_DEBUG("<-- Read data from port=%d, len=%d -->\r\n", port, len);
 	pData[len] = 0;
 	char tmp_buff[300] = {0};
-	if(port == UART_PORT3)
+	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
+
+	if(port == UART_PORT3)//485
 	{
 		//send it to server
 		m_pCurrentPos = m_send_buf;
-		//Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
+		if(programmSettings.ipSettings.mode == 101){
+			//APP_DEBUG("<-- proc_handle: m_remain_len=%d -->\r\n", m_remain_len);
+			m_remain_len += AddPidHeader(0x03, (u8*)(m_pCurrentPos + m_remain_len), len, &programmData.lastPacket);
+			//APP_DEBUG("proc_handle: m_remain_len(after AddPidHeader)=%d", m_remain_len);
+		}
 		Ql_memcpy(m_pCurrentPos + m_remain_len, pData, len);//!!!
 		m_remain_len += len;
 		/////////////////////////////////////
@@ -1580,10 +1612,11 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 			}
 
 			//if not command, send it to server
+			/*
 			m_pCurrentPos = m_send_buf;
-			//Ql_strcpy(m_pCurrentPos + m_remain_len, pData);
 			Ql_memcpy(m_pCurrentPos + m_remain_len, pData, len);//!!!
 			m_remain_len += len;
+			*/
 		}
 	}
 }

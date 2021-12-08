@@ -51,6 +51,11 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
 /***********************************************************************
  *
 ************************************************************************/
+bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket);
+s32 AddPidHeader(u8 typ, u8* buffer, s32 len, sPidPacket *lastPacket);
+/***********************************************************************
+ *
+************************************************************************/
 char *Gsm_GetSignal(char *tmp_buff);
 
 /***********************************************************************

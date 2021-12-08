@@ -332,6 +332,8 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  sett_in_ram->ipSettings.mode = 0;
     		  else if(mode == 1)
     			  sett_in_ram->ipSettings.mode = 1;
+    		  else if(mode == 101)
+    			  sett_in_ram->ipSettings.mode = 101;
     		  r = TRUE;
     	  }
     	  else if(Ql_strcmp(cmd, "apn") == 0)
@@ -505,7 +507,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  else if(Ql_strcmp(cmd, "duration") == 0)
     	  {
     		  s32 value = Ql_atoi(val);
-    		  if(value >= 30){//1 min
+    		  if(value >= 30){//30 sec
     			  sett_in_ram->secondsOfDuration = value;
     			  r = TRUE;
     		  }
@@ -882,6 +884,51 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
 
   }
   return ret;
+}
+
+/***********************************************************************
+ * Pid analize
+************************************************************************/
+bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket)
+{
+	bool ret = FALSE;
+	if(len > 4)
+	{
+		bShort tmp;
+		tmp.Data_b[1] = buffer[2];
+		tmp.Data_b[0] = buffer[3];
+		if(tmp.Data_s == (len-4)){
+			u8 pid = buffer[0];
+			u8 typ = buffer[1];
+			//if(typ == 0x02){//0x02-from server, 0x03-from device, 0x0B-init packet (???)
+			lastPacket->pid 	= pid;
+			lastPacket->type 	= typ;
+			lastPacket->len		= tmp.Data_s;
+			ret = TRUE;
+
+			APP_DEBUG("<-- AnalizePidPacket: pid=%d, type=%d, len=%d -->\r\n", lastPacket->pid, lastPacket->type, lastPacket->len);
+
+			//}
+		}
+	}
+	return ret;
+}
+
+s32 AddPidHeader(u8 typ, u8* buffer, s32 len, sPidPacket *lastPacket)
+{
+	s32 ret = 0;
+	if(lastPacket != NULL && len > 0){
+		bShort tmp;
+		tmp.Data_s = len;
+
+		buffer[ret++] = (u8)lastPacket->pid;
+		buffer[ret++] = typ;
+		buffer[ret++] = tmp.Data_b[1];
+		buffer[ret++] = tmp.Data_b[0];
+
+		APP_DEBUG("<-- AddPidHeader: pid=%d, typ=%d, len=%d -->\r\n", lastPacket->pid, typ, tmp.Data_s);
+	}
+	return ret;
 }
 
 
