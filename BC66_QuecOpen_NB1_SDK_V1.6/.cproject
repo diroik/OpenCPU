@@ -97,10 +97,9 @@
 							</tool>
 							<tool errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.947737294" name="Cross ARM C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.541796732" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="TASK_FUNC_DECLARATION"/>
 									<listOptionValue builtIn="false" value="TASK_DEFINITION"/>
-									<listOptionValue builtIn="false" value="__OCPU_GPIO_EXTEND_SUPPORT__"/>
-									<listOptionValue builtIn="false" value="__OCPU_RIL_SUPPORT__"/>
-									<listOptionValue builtIn="false" value="__PROJECT_SMART_BUTTON__"/>
+									<listOptionValue builtIn="false" value="__EXAMPLE_TCPCLIENT_API__"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.459165674" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>

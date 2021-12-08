@@ -22,17 +22,18 @@
 
 int clear_all_nulls(char *_ptr, int _size);
 
-
-
 s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout, bool INV);
-//s32 GetInputValueWithLed(Enum_PinName *pin, Enum_PinName *led, s32 *cnt, u32 max_timeout, bool INV);
+float GetKoeff(float R);
+float GetTempValue(u32 adcValue);
+
 s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/char* pBuffer, /*[in]*/u32 bufLen);
 void reboot(sProgrammData *programmData);
 char *Gsm_GetSignal(char *tmp_buff);
 
 char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ram, sProgrammData *programmData);
-char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram);
-char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram);
+char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
+char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
+char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
 
 
 

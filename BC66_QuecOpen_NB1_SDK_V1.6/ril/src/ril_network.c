@@ -264,7 +264,11 @@ static s32 ATResponse_QENG_Handler(char* line, u32 len, void* param)
 
 static s32 ATResponse_Handler(char* line, u32 len, void* userData)
 {
-    
+    /*
+	if(line){
+		APP_DEBUG("ATResponse_Handler head=<%s>\r\n", line);
+	}*/
+
     if (Ql_RIL_FindLine(line, len, "OK"))
     {  
         return  RIL_ATRSP_SUCCESS;
@@ -434,19 +438,16 @@ static s32 ATResponse_NIDD_Handler(char* line, u32 len, void* userdata)
     {
         return  RIL_ATRSP_SUCCESS;
     }
-
     head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
     if(head)
     {
         return  RIL_ATRSP_FAILED;
     }
-
     head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
     if(head)
     {
         return  RIL_ATRSP_FAILED;
     }
-
     return RIL_ATRSP_CONTINUE; //continue wait
 }
 
@@ -511,7 +512,7 @@ s32  Ql_NIDD_CreateID(char* apn, char* userName, char* pw)
     Ql_memset(&response,0, sizeof(response));
 
     u32 cmdLen 			= Ql_strlen(strAT);
-    //APP_DEBUG("Ql_NIDD_CreateID strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
+    APP_DEBUG("Ql_NIDD_CreateID strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
     s32 ret = Ql_RIL_SendATCmd(strAT, cmdLen, ATResponse_NIDD_Handler, (void*)&response, 0);
 
     if(ret == RIL_AT_SUCCESS)
@@ -528,7 +529,7 @@ s32  Ql_NIDD_Connect(s32 accountId)
 
     Ql_memset(strAT,0x00, sizeof(strAT));
     Ql_sprintf(strAT,"AT+QNIDD=1,%d", accountId);
-    //APP_DEBUG("Ql_NIDD_Connect strAT=<%s>\r\n", strAT);
+    APP_DEBUG("Ql_NIDD_Connect strAT=<%s>\r\n", strAT);
     NIDD_CR_Reponse response;
     Ql_memset(&response,0, sizeof(response));
     s32 ret = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_NIDD_Handler, (void*)&response, 0);
@@ -547,7 +548,7 @@ s32  Ql_NIDD_ActivateConnection(s32 niddId)
     char strAT[30] ;
     Ql_memset(strAT,0x00, sizeof(strAT));
     Ql_sprintf(strAT,"AT+QNIDD=2,%d", niddId);
-    //APP_DEBUG("Ql_NIDD_ActivateConnection strAT=<%s>\r\n", strAT);
+    APP_DEBUG("Ql_NIDD_ActivateConnection strAT=<%s>\r\n", strAT);
     retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
     //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);
     return retRes;
@@ -588,7 +589,7 @@ s32  Ql_NIDD_CloseConnection(s32 niddId)
     Ql_sprintf(strAT,"AT+QNIDD=5,%d", niddId);
 
 
-    //APP_DEBUG("Ql_NIDD_CloseConnection strAT=<%s>\r\n", strAT);
+    APP_DEBUG("Ql_NIDD_CloseConnection strAT=<%s>\r\n", strAT);
 
     retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
     //retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL, NULL, 0);

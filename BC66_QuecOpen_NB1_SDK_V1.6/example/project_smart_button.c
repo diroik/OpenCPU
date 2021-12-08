@@ -102,8 +102,23 @@ u32 totalSeconds = 0;
 /*****************************************************************
 * Other Param
 ******************************************************************/
-static Enum_PinName  	led_pin 	= PINNAME_GPIO2;//30
+//static Enum_PinName  	led_pin 	= PINNAME_GPIO2;//30
+
+#define SIMPLE_TEST_BOARD
+
+#ifdef SIMPLE_TEST_BOARD
+static Enum_PinName  	led_pin1 	= PINNAME_GPIO2;//30
+static Enum_PinName  	led_pin2 	= PINNAME_NETLIGHT;//16
 static Enum_PinName  	button_pin 	= PINNAME_GPIO3;//31
+
+#else
+static Enum_PinName  	led_pin1 	= PINNAME_RXD_DBG;//38
+static Enum_PinName  	led_pin2 	= PINNAME_TXD_DBG;//39
+static Enum_PinName  	button_pin 	= PINNAME_CTS_AUX;//22
+#endif
+
+
+
 static sProgrammSettings programmSettings;
 
 /*****************************************************************
@@ -123,9 +138,13 @@ static sProgrammData programmData =
     .HbuttonState	= FALSE,
 
     .ledBlinkCnt	= 0,
+    .ledBlinkCnt2   = 0,
 
     .needSendNidd 	= FALSE,
-    .timerTimeout  = BT_TIMER_TIMEOUT * 1000
+    .timerTimeout  = BT_TIMER_TIMEOUT * 1000,
+
+    .cregInit = FALSE,
+    .cregStatus = 0
 };
 Enum_NIDDSTATE m_nidd_state = NIDD_STATE_WAIT;
 
@@ -290,11 +309,18 @@ void proc_subtask1(s32 TaskId)
     u32 ber			= 0;
     s32 tmpCNT 		= 0;
     s32 niddErrorCNT = 0;
-    s32 recvTimeout  = 0;
+    s32 recvTimeout  = 10;
     u32 capacity, voltage;
     u32	secondsCNT 	= 0;
     u32 lastPid 	= 0;
+
+
     sDataJsonParams recv;
+
+    //from InitGPIO
+    Ql_GPIO_Init(led_pin1, 		PINDIRECTION_OUT, 	PINLEVEL_LOW, 	PINPULLSEL_DISABLE);
+    Ql_GPIO_Init(led_pin2, 		PINDIRECTION_OUT, 	PINLEVEL_LOW, 	PINPULLSEL_DISABLE);
+    Ql_GPIO_Init(button_pin, 	PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
 
     do
     {
@@ -334,6 +360,7 @@ void proc_subtask1(s32 TaskId)
 				case NIDD_CHECK_NET_REG:
 					ret = RIL_NW_GetEGPRSState(&cgreg);
 					APP_DEBUG("<--NIDD_CHECK_NET_REG Network State: cgreg=%d-->\r\n", cgreg);
+					programmData.cregStatus = cgreg;
 					if((cgreg == NW_STAT_REGISTERED)||(cgreg == NW_STAT_REGISTERED_ROAMING)){
 						ret = RIL_NW_GetSignalQuality(&rssi, &ber);
 						APP_DEBUG("<--RIL_NW_GetSignalQuality, rssi=%u, ber=%u-->\r\n", rssi, ber);
@@ -349,8 +376,8 @@ void proc_subtask1(s32 TaskId)
 					break;
 
 				case NIDD_STATE_ACT_PDN:
-					ret = Ql_PDN_Activate(1, 4, programmSettings.gsmSettings.gprsApn, programmSettings.gsmSettings.gprsUser, programmSettings.gsmSettings.gprsPass);
-					APP_DEBUG("<--Ql_PDN_Activate, ret=%d-->\r\n", ret);
+					//ret = Ql_PDN_Activate(1, 4, programmSettings.gsmSettings.gprsApn, programmSettings.gsmSettings.gprsUser, programmSettings.gsmSettings.gprsPass);
+					//APP_DEBUG("<--Ql_PDN_Activate, ret=%d-->\r\n", ret);
 
 					m_nidd_state = NIDD_STATE_CREATE_ACCOUNT;
 					break;
@@ -412,7 +439,12 @@ void proc_subtask1(s32 TaskId)
 						ret = Ql_NIDD_SendData(niddId, m_nidd_buf);
 						APP_DEBUG("<--Ql_NIDD_SendData ret=%d, data=<%s>-->\r\n", ret, tmp_buff);
 						if(ret == RIL_AT_SUCCESS){
-							recvTimeout = 60;
+							//recvTimeout = 60;
+
+							if(programmSettings.recvTimeout >= 5 && programmSettings.recvTimeout <= 3600){
+								recvTimeout = programmSettings.recvTimeout;
+							}
+
 							programmData.timerTimeout += recvTimeout * 1000;
 							Ql_memset(m_nidd_buf, 0, sizeof(m_nidd_buf));
 							nidd_recv_len = 0;
@@ -437,9 +469,12 @@ void proc_subtask1(s32 TaskId)
 							APP_DEBUG("<--NIDD_STATE_RECV: lastPid=<%lu>, recv.pid=<%lu>-->\r\n", lastPid, recv.pid);
 							if(lastPid == recv.pid){
 								programmData.ledBlinkCnt = 50;
+								recvTimeout = 0;
 							}
 						}
-						recvTimeout = 0;
+						Ql_memset(m_nidd_buf, 0, sizeof(m_nidd_buf));
+						nidd_recv_len = 0;
+						//recvTimeout = 0;
 					}
 					if(--recvTimeout <= 0){
 						//APP_DEBUG("<--NIDD_STATE_RECV, recvTimeout=%d-->\r\n", recvTimeout);
@@ -456,8 +491,8 @@ void proc_subtask1(s32 TaskId)
 					break;
 
 				case NIDD_STATE_CLOSE_PDN:
-					ret = Ql_PDN_Deactivate(1);
-					APP_DEBUG("<--Ql_PDN_Deactivate, ret=%d-->\r\n", ret);
+					//ret = Ql_PDN_Deactivate(1);
+					//APP_DEBUG("<--Ql_PDN_Deactivate, ret=%d-->\r\n", ret);
 
 					m_nidd_state = NIDD_STATE_FREE;
 					break;
@@ -475,6 +510,13 @@ void proc_subtask1(s32 TaskId)
 					break;
 
 				default:
+
+					ret = RIL_NW_GetEGPRSState(&cgreg);
+					if(ret == 0){
+						programmData.cregStatus = cgreg;
+						programmData.cregInit = TRUE;
+					}
+
 					break;
 			};
     	}
@@ -485,16 +527,37 @@ void proc_subtask1(s32 TaskId)
 void proc_subtask2(s32 TaskId)
 {
 	APP_DEBUG("<--subtask: starting, taskId=%d-->\r\n", TaskId);
+
+	s32 cregStatCnt = 0;
+
     while (TRUE)
     {
     	Ql_Sleep(100);
     	if(programmData.ledBlinkCnt--  > 0)
     	{
-    		Ql_GPIO_SetLevel(led_pin, programmData.ledBlinkCnt%2 > 0 ? PINLEVEL_HIGH : PINLEVEL_LOW);//Enum_PinLevel
+    		Ql_GPIO_SetLevel(led_pin1, programmData.ledBlinkCnt%2 > 0 ? PINLEVEL_HIGH : PINLEVEL_LOW);//Enum_PinLevel
     	}
     	else
     	{
-    		Ql_GPIO_SetLevel(led_pin, programmData.buttonState);
+    		Ql_GPIO_SetLevel(led_pin1, programmData.buttonState);
+    	}
+
+    	if(programmData.cregInit == TRUE){
+
+    		if((programmData.cregStatus == NW_STAT_REGISTERED)||(programmData.cregStatus == NW_STAT_REGISTERED_ROAMING)){
+    			Ql_GPIO_SetLevel(led_pin2, 0);
+    		}
+    		else{
+    			if(cregStatCnt-- <= 0){
+    				cregStatCnt = 10;
+    			}
+    			else if(cregStatCnt == 3 || cregStatCnt == 1 ){
+    				Ql_GPIO_SetLevel(led_pin2, 1);
+    			}
+    			else{
+    				Ql_GPIO_SetLevel(led_pin2, 0);
+    			}
+    		}
     	}
     }
 }
@@ -630,8 +693,9 @@ static void InitFlash(void)
 
 static void InitGPIO(void)
 {
-    Ql_GPIO_Init(led_pin, 		PINDIRECTION_OUT, 	PINLEVEL_LOW, 	PINPULLSEL_DISABLE);
-    Ql_GPIO_Init(button_pin, 	PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
+    //Ql_GPIO_Init(led_pin1, 		PINDIRECTION_OUT, 	PINLEVEL_LOW, 	PINPULLSEL_DISABLE);
+    //Ql_GPIO_Init(led_pin2, 		PINDIRECTION_OUT, 	PINLEVEL_LOW, 	PINPULLSEL_DISABLE);
+    //Ql_GPIO_Init(button_pin, 	PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
 
 
     programmData.timerTimeout  = getTimerTimeout();

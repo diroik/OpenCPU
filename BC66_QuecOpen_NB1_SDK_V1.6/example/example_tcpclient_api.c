@@ -58,6 +58,7 @@
 #include "ql_trace.h"
 #include "ql_error.h"
 #include "ql_gpio.h"
+#include "ql_rtc.h"
 #include "ql_power.h"
 #include "ql_system.h"
 #include "ql_wtd.h"
@@ -70,6 +71,7 @@
 #include "ril_util.h"
 #include "ril_sim.h"
 #include "ril_network.h"
+#include "ril_system.h"
 /*****************************************************************
 ******************************************************************/
 #include "typedef.h"
@@ -115,9 +117,21 @@ static s32 m_socketid = -1;
 static s32 m_remain_len = 0;     // record the remaining number of bytes in send buffer.
 static char *m_pCurrentPos = NULL;
 /*****************************************************************
+* rtc param
+******************************************************************/
+static u32 Rtc_id = 0x101;
+static u32 Rtc_Interval = 60*1000  *1; //1min
+volatile bool RTC_Flag = FALSE;
+/*****************************************************************
 * ADC Param
 ******************************************************************/
 static u32 ADC_CustomParam = 1;
+/*****************************************************************
+* Local time param
+******************************************************************/
+ST_Time time;
+ST_Time* pTime = NULL;
+u32 totalSeconds = 0;
 /*****************************************************************
 * Other Param
 ******************************************************************/
@@ -131,7 +145,6 @@ static sProgrammData programmData =
     .needReboot 	= FALSE,
     .initFlash		= FALSE,
 
-    .totalMS 		= 0,
     .rebootCnt 		= 0,
     .reconnectCnt 	= 0,
     .pingCnt		= 0,
@@ -145,6 +158,10 @@ static sProgrammData programmData =
     .Hin1State		= FALSE,
     .in2State		= FALSE,
     .Hin2State		= FALSE,
+    .tempValue 		= 0.0,
+    .totalSeconds 	= 0,
+
+    .autCnt			= 0
 };
 
 static sProgrammSettings programmSettings;
@@ -178,6 +195,7 @@ static void TCP_Callback_Timer(u32 timerId, void* param);
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam);
 static void gpio_callback_onTimer(u32 timerId, void* param);
 static void wdt_callback_onTimer(u32 timerId, void* param);
+static void Rtc_handler(u32 rtcId, void* param);
 /*****************************************************************
 * other subroutines
 ******************************************************************/
@@ -191,8 +209,8 @@ static void InitUART(void);
 static void InitTCP(void);
 static void InitGPIO(void);
 static void InitADC(void);
-static char *Gsm_GetSignal(char *tmp_buff);
-
+static bool GetLocalTime(void);
+static void InitRTC(void);
 
 void proc_main_task(s32 taskId)
 {
@@ -217,11 +235,42 @@ void proc_main_task(s32 taskId)
         switch(msg.message)
         {
         case MSG_ID_RIL_READY:
-            APP_DEBUG("<-- RIL is ready -->\r\n");
             Ql_RIL_Initialize();
+            APP_DEBUG("<-- RIL is ready -->\r\n");
 
+            RIL_QNbiotEvent_Enable(PSM_EVENT);
             programmData.firstInit = TRUE;
             break;
+
+     	case MSG_ID_URC_INDICATION:
+		{
+			switch (msg.param1)
+            {
+
+				case URC_EGPRS_NW_STATE_IND:
+					//APP_DEBUG("<--EGPRS Network Status:<%d>-->\r\n", msg.param2);
+					if(msg.param2 == 1)
+					{
+						//Ql_Sleep(1000);
+						//GetLocalTime();();
+					}
+				break;
+
+    			case URC_PSM_EVENT:
+					if(ENTER_PSM == msg.param2){
+	          			APP_DEBUG("<--The modem enter PSM mode-->\r\n");
+			 		}
+					else if(EXIT_PSM == msg.param2){
+	          			APP_DEBUG("<--The modem exit from PSM mode-->\r\n");
+			 		}
+                	break;
+
+         		default:
+         			APP_DEBUG("<--MSG_ID_URC_INDICATION,  msg.param1=<%u>, msg.param2=<%u>-->\r\n", msg.param1, msg.param2);
+           		break;
+			}
+      	}
+		break;
 
         default:
             break;
@@ -231,14 +280,16 @@ void proc_main_task(s32 taskId)
 
 void proc_subtask1(s32 TaskId)
 {
-    ST_MSG subtask1_msg;
+    //ST_MSG subtask1_msg;
+    s32 tmpCNT 		= 0;
+
 
     //Ql_Sleep(100);
     APP_DEBUG("<-- subtask: entering -->\r\n");
 
     do
     {
-    	Ql_Sleep(100);//in ms
+    	Ql_Sleep(50);//in ms
     }
     while(programmData.firstInit == FALSE);
 
@@ -249,15 +300,14 @@ void proc_subtask1(s32 TaskId)
     InitUART();
     InitGPIO();
     InitADC();
+    s32 ret = Ql_SleepDisable();
 
     while (TRUE)
     {
-        Ql_OS_GetMessage(&subtask1_msg);
-        switch (subtask1_msg.message)
-        {
-            default:
-                break;
-        }
+    	//Ql_OS_GetMessage(&subtask1_msg);//нельзя убирать!!! т.к. все колбеки, проинициализированные в этом процессе не будут вызываться!!! Ql_Sleep нельзя, но здесь почему-то работает...
+    	Ql_Sleep(100);
+
+
     }
 }
 
@@ -788,16 +838,19 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
 
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam)
 {
-	s32 index = *((s32*)customParam);
-	if(index % 30 == 0)
+	u32 index = *((u32*)customParam);
+
+	if(index % 60 == 0)
 	{
-		//APP_DEBUG("<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam));
 		u32 capacity, voltage;
 		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
 		if(ret == QL_RET_OK)
 		{
-			APP_DEBUG( "<-- PowerSupply: capacity(percent)=%d  voltage(mV)=%d -->\r\n", capacity, voltage);
+			programmData.tempValue = GetTempValue(adcValue);
+			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.tempValue);
 		}
+
+		APP_DEBUG("<-- Callback_OnADCSampling: sampling voltage(mV)=%d times=%d ret=%d -->\r\n", adcValue, index, ret);
 	}
 
     *((s32*)customParam) += 1;
@@ -811,9 +864,9 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	if (GPIO_TIMER_ID == timerId)
 	{
 		//APP_DEBUG("<-- Get the button_pin GPIO level value: %d -->\r\n", Ql_GPIO_GetLevel(button_pin));
-		s32 btp = GetInputValue(&button_pin, 	&programmData.buttonCnt,(u32)(programmSettings.buttonTimeout * 	1000/GPIO_INPUT_TIMER_PERIOD));
-		s32 i1p = GetInputValue(&in1_pin, 		&programmData.in1Cnt, 	(u32)(programmSettings.in1Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD));
-		s32 i2p = GetInputValue(&in2_pin, 		&programmData.in2Cnt, 	(u32)(programmSettings.in2Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD));
+		s32 btp = GetInputValue(&button_pin, 	&programmData.buttonCnt,(u32)(programmSettings.buttonTimeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
+		s32 i1p = GetInputValue(&in1_pin, 		&programmData.in1Cnt, 	(u32)(programmSettings.in1Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
+		s32 i2p = GetInputValue(&in2_pin, 		&programmData.in2Cnt, 	(u32)(programmSettings.in2Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
 
 		if(btp >= 0) programmData.buttonState = (bool)btp;
 		if(programmData.HbuttonState != programmData.buttonState){//is changed
@@ -839,7 +892,7 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	}
 	else if (LED_TIMER_ID == timerId)
 	{
-		programmData.totalMS += 50;
+		//programmData.totalMS += 50;
 		//led_cnt
 	    if(led_cnt-- < 0)
 	    {
@@ -847,9 +900,7 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	      if(programmData.reconnectCnt++ > programmSettings.secondsToReconnect)
 	      {
 	        programmData.reconnectCnt = 0;
-	        //gsmState.need_tcp_connect = TRUE;
-
-	        if(m_socketid >= 0)
+	        if(m_socketid >= 0)//
 	        {
 	        	APP_DEBUG("<-- Socket reconnect timeout, need_tcp_connect socketId=%d, secondsToReconnect=<%d> -->\r\n", m_socketid, programmSettings.secondsToReconnect);
 				ret = Ql_SOC_Close(m_socketid);
@@ -879,6 +930,18 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	      }
 	      //Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
 	      Ql_GPIO_SetLevel(led_pin, PINLEVEL_HIGH);
+
+	      //authorization
+	      if(programmData.autCnt > 0){
+	    	  if(programmData.autCnt == 1){
+	    		  APP_DEBUG("<-- authorization timer stop -->\r\n");
+	    	  }
+	    	  else if(programmData.autCnt == AUT_TIMEOUT){
+	    		  APP_DEBUG("<-- authorization timer start -->\r\n");
+	    	  }
+	    	  programmData.autCnt--;
+	      }
+
 	    }
 	    else{
 	    	Ql_GPIO_SetLevel(led_pin, PINLEVEL_LOW);
@@ -910,6 +973,12 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     }
 }
 
+static void Rtc_handler(u32 rtcId, void* param)
+{
+    if(Rtc_id == rtcId) {
+    	*((bool*)param) = TRUE;
+    }
+}
 /*****************************************************************
 * other functions
 ******************************************************************/
@@ -1057,7 +1126,7 @@ static void InitADC(void)
 
     // Initialize ADC (sampling count, sampling interval)
     APP_DEBUG("<-- Initialize ADC (sampling count=5, sampling interval=200ms) -->\r\n")
-    Ql_ADC_Init(adcPin, 50, 200);
+    Ql_ADC_Init(adcPin, 5, 200);
 
     // Start ADC sampling
     APP_DEBUG("<-- Start ADC sampling -->\r\n")
@@ -1067,31 +1136,63 @@ static void InitADC(void)
     //Ql_ADC_Sampling(adcPin, FALSE);
 }
 
-/*****************************************************************************
-* Function:
-*
-* Description:
-*
-* Parameters:
-*
-* Return:
-*
-*****************************************************************************/
-static char *Gsm_GetSignal(char *tmp_buff)
+
+static bool GetLocalTime(void)
 {
-    u32 rssi;
-    u32 ber;
-    RIL_NW_GetSignalQuality(&rssi, &ber);
+	bool ret = FALSE;
+    if((Ql_GetLocalTime(&time)))
+    {
+        //This function get total seconds elapsed   since 1970.01.01 00:00:00.
+        totalSeconds = Ql_Mktime(&time);
+        APP_DEBUG("<--Local time successfuly determined: %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
 
-    //u64 totalMS;
-    //totalMS = 0;//Ql_GetMsSincePwrOn();
+        if(totalSeconds > 0)
+        	programmData.totalSeconds = totalSeconds;
+        //pTime = Ql_MKTime2CalendarTime(totalSeconds, &time);
 
-    //APP_DEBUG("uptime: %ld ms, signal strength: %d, BER: %d\r\n", totalMS, rssi, ber);
-    //Ql_strcpy(tmp_buff, DBG_BUFFER);
-    Ql_sprintf(tmp_buff ,"uptime: %ld ms, signal strength: %u, BER: %u", programmData.totalMS, rssi, ber);
-
-    return tmp_buff;
+        APP_DEBUG("<--totalSeconds=%lu-->\r\n", programmData.totalSeconds);
+        ret = TRUE;
+    }
+    else
+    {
+        APP_DEBUG("\r\n<--failed !! Local time not determined -->\r\n");
+    }
+    return ret;
 }
+
+static void InitRTC(void)
+{// инициализация и переинициализация должны происходить в ОДНОМ и том же потоке!!!
+	s32 ret;
+    //rtc register
+    ret = Ql_Rtc_RegisterFast(Rtc_id, Rtc_handler, (void*)&RTC_Flag);
+    if(ret < 0){
+		if(-4 != ret){
+			APP_DEBUG("\r\n<--InitRTC rtc register failed!:RTC id(%u),ret(%d)-->\r\n", Rtc_id, ret);
+		}
+		else{
+			APP_DEBUG("\r\n<--the rtc is already register-->\r\n");
+		}
+    }
+
+/*    if(programmData.initFlash == TRUE)
+    {
+    	s32 timeout = programmSettings.rtcInterval;
+		Rtc_Interval = (u32)timeout*1000;
+		APP_DEBUG("\r\n<--InitRTC timeout=%lu sec-->\r\n", timeout);
+    }
+    */
+	//start a rtc ,repeat=true;
+	ret = Ql_Rtc_Start(Rtc_id, Rtc_Interval, TRUE);
+	if(ret < 0){
+		if(-4 != ret){
+			APP_DEBUG("\r\n<--InitRTC rtc start failed!!:ret=%d-->\r\n",ret);
+		}
+		else{
+			APP_DEBUG("\r\n<--the rtc is already start-->\r\n");
+		}
+	}
+}
+
 
 #endif // __EXAMPLE_TCPCLIENT_API__
 

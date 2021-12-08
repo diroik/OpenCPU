@@ -56,7 +56,7 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
     char *head = Ql_RIL_FindString(line, len, "+CBC:"); //continue wait
     if(head)
     {
-    	//APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", head);
+    	APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", head);
         /*char strTmp[10];
         char *p1,*p2;
         p1 = Ql_strstr(head, ":");
@@ -285,7 +285,6 @@ s32 RIL_QNbiotEvent_Enable(u32 event)
     return Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL,NULL, 0);
 }
 
-
 s32 RIL_QNbiotEvent_Disable(u32 event)
 {
     char strAT[] = "AT+QNBIOTEVENT=0,1\n";
@@ -295,6 +294,12 @@ s32 RIL_QNbiotEvent_Disable(u32 event)
     }
     return Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), NULL,NULL, 0);
 }
+
+///////////////////////////////
+
+
+
+////////////////////////////////
 
 //src_string="GPRMC,235945.799,V,,,,,0.00,0.00,050180,,,N" index =1  ·µ»ØTRUE ,dest_string="235945.799"; index =3£¬·µ»ØFALSE
 bool QSDK_Get_Str(char *src_string,  char *dest_string, unsigned char index)

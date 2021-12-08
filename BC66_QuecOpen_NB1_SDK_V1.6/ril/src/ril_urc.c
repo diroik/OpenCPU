@@ -48,7 +48,7 @@
 
 #ifdef __OCPU_RIL_SUPPORT__
 
-#define RIL_URC_DEBUG_ENABLE 0
+#define RIL_URC_DEBUG_ENABLE 1
 #if RIL_URC_DEBUG_ENABLE > 0
 #define RIL_URC_DEBUG_PORT  UART_PORT0
 static char DBG_Buffer[1024];

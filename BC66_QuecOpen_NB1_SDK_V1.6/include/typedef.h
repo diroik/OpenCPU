@@ -34,6 +34,11 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define MAX_ADDRESS_LEN 64
 #define MAX_KOEFF_LEN 2
+#define AUT_PASSWORD_LEN 16
+
+#define AUT_TIMEOUT 300
+
+#define RESISTOR 2000.0
 
 typedef enum{
     TCP_STATE_NW_GET_SIMSTATE,
@@ -126,6 +131,19 @@ typedef struct{
 	char				cmdPassw[16];
 }sSecuritySettings;
 
+typedef struct{
+	u32 pid;
+	bool state;
+	bool confirm;
+	u16  rssi;
+	u16 ber;
+	u16 voltage;
+	u16 capacity;
+
+	char iccid[21];
+
+}sDataJsonParams;
+
 
 
 #ifdef __PROJECT_SMART_BUTTON__
@@ -147,9 +165,15 @@ typedef struct{
     bool 			HbuttonState;
 
     s32				ledBlinkCnt;
+    s32				ledBlinkCnt2;
 
     bool 			needSendNidd;
     u32				totalSeconds;
+
+    s32 			cregStatus;
+    bool			cregInit;
+
+
 }sProgrammData;
 
 typedef struct{
@@ -164,23 +188,10 @@ typedef struct{
     u64					timerTimeout;
     u64					rtcInterval;//in sec
 
+    u32					recvTimeout;//sec
     bool				rtcNeedCorrect;
 
 }sProgrammSettings;
-
-typedef struct{
-	u32 pid;
-	bool state;
-	bool confirm;
-	u16  rssi;
-	u16 ber;
-	u16 voltage;
-	u16 capacity;
-
-	char iccid[21];
-
-}sDataJsonParams;
-
 
 #else
 
@@ -200,8 +211,8 @@ typedef struct{
     u32            	secondsToReconnect;
     u32				secondsToPing;
 
-    u16            	serPortDataTimeout;
-    u16            	gsmPortDataTimeout;
+    u16            	serPortDataTimeout;//period
+    u16            	gsmPortDataTimeout;//duration
     //u16            	smsRecvTimeout;
 
     u8				buttonTimeout;//in sec
@@ -227,14 +238,16 @@ typedef struct{
     bool 			Hin1State;
     bool 			in2State;
     bool 			Hin2State;
+    float 			tempValue;
 
     u32            	rebootCnt;
     u32            	reconnectCnt;
     u32            	pingCnt;
+    u32 			autCnt;
 
-    u64				totalMS;
+    u32				totalSeconds;
 
-    s64				buttonTimerTimeout;//in 10 ms
+    //s64				buttonTimerTimeout;//in 10 ms
 
 }sProgrammData;
 

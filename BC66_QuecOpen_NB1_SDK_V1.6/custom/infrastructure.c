@@ -109,6 +109,59 @@ s32 GetInputValueWithLed(Enum_PinName *pin, Enum_PinName *led, s32 *cnt, u32 max
 	return ret;
 }*/
 
+
+
+
+float GetKoeff(float R)
+{
+  if(R < 802)//t <0
+    return 0.88;
+
+  else if( R >= 802 && R < 874)
+  {// t>=0
+    return 0.85;
+  }
+  else if( R >= 874 && R < 950)
+  {//t=>10
+    return 0.83;
+  }
+  else if( R >= 950 && R < 990)
+  {//t=>20
+    return 0.80;
+  }
+ /*else if( R >= 990 && R < 1029)
+  {//t=>25
+    return 0.83;
+  }*/
+  else if( R >= 1029 && R < 1108)
+  {//t=>30
+    return 0.78;
+  }
+  else if( R >= 1108 && R < 1192)
+  {//t=>40
+    return 0.75;
+  }
+  else if(R >= 1192)// t>50
+    return 0.73;
+  else
+  {
+    return 0.79;
+  }
+}
+
+
+float GetTempValue(u32 adcValue)
+{
+	float U = adcValue/1000.0;
+	float R = U/((3.3 - U)/RESISTOR);
+	float d = (R - 1000.0)/(GetKoeff(R)*10.0);
+	if( d > 199 ){
+		return 199.0;
+	}
+	return 25.0 + d;
+}
+
+
 s32 ReadSerialPort(Enum_SerialPort port, /*[out]*/char* pBuffer, /*[in]*/u32 bufLen)
 {
     s32 rdLen = 0;
@@ -193,7 +246,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			{//set
 				s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
 				if(len > 0)
-					ret = set_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+					ret = set_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram, programmData);
 			}
 			else
 			{
@@ -202,7 +255,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 				{//get
 					s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
 					if(len > 0)
-						ret = get_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+						ret = get_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram, programmData);
 				}
 			}
 		}
@@ -210,7 +263,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 	return ret;
 }
 
-char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
+char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
 {
   char *ret = NULL;
   char tbuff[50] = {0};
@@ -288,6 +341,17 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    else if(Ql_strcmp(cmd, "recv timeout") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%d", sett_in_ram->recvTimeout);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+
 	else if(Ql_strcmp(cmd, "signal") == 0)
 	{
 		ret = Gsm_GetSignal(tmp_buff);
@@ -296,7 +360,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
   return ret;
 }
 
-char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
+char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
 {
   char *ret = NULL;
   //char tbuff[50] = {0};
@@ -375,9 +439,18 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "recv timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 5 && timeout <= 3600){ // in seconds
+    			  sett_in_ram->recvTimeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+
     	  if(r == TRUE){
     		  *(--ch) = 0;
-    		  ret = get_cmd(cmdstr, tmp_buff, sett_in_ram);
+    		  ret = get_cmd(cmdstr, tmp_buff, sett_in_ram, programmData);
     	  }
     	  else{
     	      Ql_strcpy(tmp_buff, "\r\n");
@@ -421,6 +494,23 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 	//APP_DEBUG("Parse_Command firstInit=%d\r\n", programmData->firstInit);
 	if(programmData->firstInit == TRUE)
 	{
+		char *cmdstart1 = "cmd ";
+		if(Ql_strstr(src_str, cmdstart1) == 0){
+			return ret;
+		}
+
+		if(programmData->autCnt == 0)
+		{//
+			char *cmdstart = "cmd set ";
+			if(Ql_strstr(src_str, "cmd set authorization=") != 0)
+			{//set
+				s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
+				if(len > 0)
+					ret = get_aut_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram, programmData);
+			}
+			return ret;
+		}
+
 		if(Ql_strcmp(src_str, "cmd reboot") == 0)
 		{
 			reboot(programmData);
@@ -448,15 +538,14 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			Ql_SleepEnable();
 
 		}
-		else
-		{
+		else{
 			char *cmdstart = "cmd set ";
 			if(Ql_strstr(src_str, cmdstart) != 0)
 			{//set
 				s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
 				//Ql_Debug_Trace("come cmd len=<%d>\r\n", len);
 				if(len > 0)
-					ret = set_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+					ret = set_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram, programmData);
 			}
 			else
 			{
@@ -465,15 +554,17 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 				{//get
 					s32 len = Ql_strlen(src_str) - 	Ql_strlen(cmdstart);
 					if(len > 0)
-						ret = get_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram);
+						ret = get_cmd(&src_str[Ql_strlen(cmdstart)], tmp_buff, sett_in_ram, programmData);
 				}
 			}
 		}
+		if(ret != NULL)
+			programmData->autCnt = AUT_TIMEOUT;//renew timeout if cmd coming
 	}
 	return ret;
 }
 
-char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
+char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
 {
   char *ret = NULL;
   //char tbuff[50] = {0};
@@ -649,10 +740,26 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "authorization password") == 0)
+    	  {
+    		  if(vlen <= AUT_PASSWORD_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->securitySettings.cmdPassw, 0, AUT_PASSWORD_LEN);
+    			  Ql_strncpy(sett_in_ram->securitySettings.cmdPassw, val, vlen);
+
+        	      Ql_strcpy(tmp_buff, "\r\n");
+        	      Ql_strcat(tmp_buff, "change authorization password, set commit to save.");
+        	      Ql_strcat(tmp_buff, "\r\n");
+        	      ret = tmp_buff;
+        	      return ret;
+    		  }
+    	  }
+
+
 
     	  if(r == TRUE){
     		  *(--ch) = 0;
-    		  ret = get_cmd(cmdstr, tmp_buff, sett_in_ram);
+    		  ret = get_cmd(cmdstr, tmp_buff, sett_in_ram, programmData);
     	  }
     	  else{
     	      Ql_strcpy(tmp_buff, "\r\n");
@@ -665,7 +772,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram)
   return ret;
 }
 
-char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
+char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
 {
   char *ret = NULL;
   char tbuff[50] = {0};
@@ -906,13 +1013,100 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram)
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    else if(Ql_strcmp(cmd, "input1 value") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", programmData->in1State);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+        else if(Ql_strcmp(cmd, "input2 value") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", programmData->in2State);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+        else if(Ql_strcmp(cmd, "termo value") == 0 || Ql_strcmp(cmd, "temp value") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%f", programmData->tempValue);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+
+
 	else if(Ql_strcmp(cmd, "signal") == 0)
 	{
-		//ret = Gsm_GetSignal(tmp_buff);
+		ret = Gsm_GetSignal(tmp_buff);
 	}
   }
   return ret;
 }
+
+
+char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
+{
+	  char *ret = NULL;
+	  bool r = FALSE;
+
+	  char *ch = Ql_strchr(cmdstr, '=');
+	  if(ch > 0)
+	  {
+		  char cmd[50] = {0};
+	      char val[50] = {0};
+
+	      int len = Ql_strlen(cmdstr);
+	      int clen = (int)ch++ - (int)cmdstr;
+	      int vlen = ((int)cmdstr + len) - (int)ch;
+
+	      if(clen > 0 && vlen > 0)
+	      {
+	    	  Ql_strncpy(cmd, cmdstr, clen);
+	    	  Ql_strncpy(val, ch, vlen);
+
+	    	  vlen = clear_all_nulls(val, vlen);
+	    	  if(vlen <= 0)
+	    		  return NULL;
+
+	    	  APP_DEBUG("<--get_aut_cmd cmd=<%s>, val=<%s>-->\r\n", cmd, val);
+	    	  if(Ql_strcmp(cmd, "authorization") == 0)
+	    	  {
+	    		  if(Ql_strcmp(val, sett_in_ram->securitySettings.cmdPassw) == 0){
+
+	    			  programmData->autCnt = AUT_TIMEOUT;
+	    			  r = TRUE;
+	    		  }
+	    	  }
+
+	    	  if(r == TRUE){
+	    	      Ql_strcpy(tmp_buff, "\r\n");
+	    	      Ql_strcat(tmp_buff, "authorization successful!");
+	    	      Ql_strcat(tmp_buff, "\r\n");
+	    		  ret = tmp_buff;
+	    	  }
+	    	  else{
+	    	      Ql_strcpy(tmp_buff, "\r\n");
+	    	      Ql_strcat(tmp_buff, "authorization ERROR!");
+	    	      Ql_strcat(tmp_buff, "\r\n");
+	    	      ret = tmp_buff;
+	    	  }
+
+	      }
+
+	  }
+	  return ret;
+}
+
 
 #endif
 

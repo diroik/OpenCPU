@@ -50,8 +50,8 @@
  |        Task Entry Function | Task Id Name   | Task Stack Size (Bytes) | Default Value1 | Default Value2 |
  *----------------------------------------------------------------------------------------------------*/
 TASK_ITEM(proc_main_task,       main_task_id,   10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2) //main task
-TASK_ITEM(proc_reserved1,       reserved1_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2)  //RIL task
-TASK_ITEM(proc_reserved2,       reserved2_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2)  //URC task
+TASK_ITEM(proc_reserved1,       reserved1_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2) //RIL task
+TASK_ITEM(proc_reserved2,       reserved2_id,   5*1024,  DEFAULT_VALUE1, DEFAULT_VALUE2) //URC task
 
 
 #ifdef __EXAMPLE_MULTITASK__
@@ -70,7 +70,7 @@ TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
 #ifdef __EXAMPLE_TCPCLIENT_API__
-TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+TASK_ITEM(proc_subtask1,  subtask1_id, 10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
 #ifdef __PROJECT_SMART_BUTTON__

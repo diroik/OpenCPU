@@ -23,8 +23,8 @@ static sProgrammSettings firstInitSettings =
 
     .buttonTimeout  = 1000,
     .timerTimeout   = 60000,
-    .rtcInterval	= 300,
-
+    .rtcInterval	= 7200,
+    .recvTimeout	= 30,
 
     .rtcNeedCorrect = FALSE
 
@@ -117,7 +117,7 @@ bool init_flash(sProgrammSettings *sett_in_ram)
   bool ret = FALSE;
   //sConnectionSettings temp;
   sProgrammSettings tmp;
-  u8 index = 1;//2048
+  u8 index = 1;//0-2048b; 1-2048b
   u32 len = sizeof(sProgrammSettings);
   //APP_DEBUG("<--init_flash need len=%d index=%d, start Ql_Flash_Read-->\r\n", len, index);
 
