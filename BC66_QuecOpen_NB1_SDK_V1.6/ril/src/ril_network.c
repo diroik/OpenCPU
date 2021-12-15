@@ -167,7 +167,8 @@ static s32 ATResponse_CSQ_Handler_new(char* line, u32 len, void* userdata)
     char *head = Ql_RIL_FindString(line, len, "+CSQ:"); //continue wait
     if(head)
     {
-        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&CSQ_Reponse->rssi, &CSQ_Reponse->ber);
+    	//APP_DEBUG("ATResponse_CSQ_Handler_new head=<%s>\r\n", line);
+        Ql_sscanf(head,"%*[^ ]%d,%d,%[^\r\n]",&CSQ_Reponse->rssi,&CSQ_Reponse->ber);
         return  RIL_ATRSP_CONTINUE;
     }
 

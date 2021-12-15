@@ -142,7 +142,7 @@ u32 convertFromHex(char *dest, char *src, u32 len)
 	return l;
 }
 
-
+#ifdef __PROJECT_SMART_BUTTON__
 static bool getIntValue(char *src, const char *name, u32 *value)
 {
 	bool ret = FALSE;
@@ -289,7 +289,170 @@ bool fromJSON(char* str, sDataJsonParams* out)
 	return ret;
 }
 
+#else
 
 
+static bool getIntValue(char *src, const char *name, u32 *value)
+{
+	bool ret = FALSE;
+	char *p1 = Ql_strchr(src, (s32)':');
+	s32 len = 0;
+	if(p1)
+	{
+		len = p1 - src;
+		if(len > 0)
+		{
+			s32 cmp = Ql_strncmp(src, name, len);
+			if(cmp == 0)
+			{
+				Ql_sscanf(++p1, "%ld", value);
+				APP_DEBUG("getValue name=<%s>, value=<%ld>\r\n", name, *value);
+				ret = TRUE;
+			}
+		}
+	}
+	return ret;
+}
+
+static bool getStringValue(char *src, const char *name, char *value)
+{
+	bool ret = FALSE;
+	char *p1 = Ql_strchr(src, (s32)':');
+	s32 len = 0;
+
+	if(p1)
+	{
+		len = p1 - src;
+		if(len > 0)
+		{
+			s32 cmp = Ql_strncmp(src, name, len);
+			//APP_DEBUG("getValue name=<%s>\r\n", name);
+			if(cmp == 0)
+			{
+				Ql_sscanf(++p1, "%s", value);
+				APP_DEBUG("getValue name=<%s>, value=<%s>\r\n", name, value);
+				ret = TRUE;
+			}
+		}
+	}
+	return ret;
+}
+
+static bool setStructValue(char *src, sDataJsonParams* out)
+{
+	bool ret = FALSE;
+	u32 value = 0;
+	char strValue[50] = {0};
+
+	APP_DEBUG("setStructValue <%s>\r\n", src);
+
+	if(getIntValue(src, "pid", &value))
+	{
+		out->pid = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"confirm", &value))
+	{
+		out->confirm = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"state", &value))
+	{
+		out->state = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"rssi", &value))
+	{
+		out->rssi = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"ber", &value))
+	{
+		out->ber = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"voltage", &value))
+	{
+		out->voltage = value;
+		ret = TRUE;
+	}
+	else if(getIntValue(src,"capacity", &value))
+	{
+		out->capacity = value;
+		ret = TRUE;
+	}
+	else if(getStringValue(src,"iccid", strValue))
+	{
+		Ql_strcpy(out->iccid, strValue);
+		ret = TRUE;
+	}
+	return ret;
+}
 
 
+bool fromJSON(char* str, sDataJsonParams* out)
+{
+	bool ret = FALSE;
+	char src[512] = {0};
+	char tmp[100] = {0};
+	Ql_strcpy(src, str);
+	char *p1 = Ql_strchr(src, (s32)'{');
+
+	if(p1)
+	{
+		p1++;
+		char *p2 = Ql_strchr(p1, (s32)'}');
+		if(p2)
+		{
+			*p2 = 0;
+			char *p3 = p1;
+			u32 len 	= 0;
+			u32 index 	= 0;
+
+			p1 = Ql_strchr(p1, (s32)',');
+			while(p1++)
+			{
+				if(p1 < p3 )
+					break;
+				len = p1 - p3;
+				Ql_strncpy(tmp, p3, len); tmp[len] = 0;
+				ret |= setStructValue(tmp, out);
+
+				p3 = p1;
+				p1 = Ql_strchr(p1, (s32)',');
+			};
+
+			len = Ql_strlen(p3);
+			if(len > 0){
+				Ql_strncpy(tmp, p3, len); tmp[len] = 0;
+				ret |= setStructValue(tmp, out);
+			}
+		}
+	}
+
+	if(ret == TRUE)
+	{
+		APP_DEBUG("fromJSON out={pid:%lu,confirm:%d,state:%d,rssi:%d,ber:%d,voltage:%d,capacity:%d,iccid:%s}\r\n", out->pid,out->confirm,out->state,out->rssi,out->ber,out->voltage,out->capacity,out->iccid);
+	}
+	return ret;
+}
+
+
+s32 toJSON(char *dst, sDataJsonParams *src)
+{
+	s32 len = 0;
+    len += Ql_sprintf((char*)(dst+len), "{\"imei\":\"%s\"", src->imei);
+    len += Ql_sprintf((char*)(dst+len), ",\"iccid\":\"%s\"", src->iccid);
+    len += Ql_sprintf((char*)(dst+len), ",\"totalSeconds\":%lu", src->totalSeconds);
+    len += Ql_sprintf((char*)(dst+len), ",\"timezone\":%lu", src->timezone);
+    len += Ql_sprintf((char*)(dst+len), ",\"in1\":%d", src->in1);
+    len += Ql_sprintf((char*)(dst+len), ",\"in2\":%d", src->in2);
+    len += Ql_sprintf((char*)(dst+len), ",\"rssi\":%d", src->rssi);
+    len += Ql_sprintf((char*)(dst+len), ",\"ber\":%d", src->ber);
+    len += Ql_sprintf((char*)(dst+len), ",\"temp\":%.2f", src->temp);
+    len += Ql_sprintf((char*)(dst+len), ",\"voltage\":%d", src->voltage);
+    len += Ql_sprintf((char*)(dst+len), ",\"version\":\"%s\"}", src->version);
+	return len;
+}
+
+#endif

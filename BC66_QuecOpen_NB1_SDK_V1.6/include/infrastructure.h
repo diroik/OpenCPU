@@ -31,11 +31,15 @@ void reboot(sProgrammData *programmData);
 char *Gsm_GetSignal(char *tmp_buff);
 
 char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ram, sProgrammData *programmData);
+char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
 char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
 char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
-char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData);
 
-
+/***********************************************************************
+ *
+************************************************************************/
+bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket);
+s32 AddPidHeader(u8 typ, u8* buffer, s32 len, sPidPacket *lastPacket);
 
 
 #endif /* INFRASTRUCTURE_H_ */

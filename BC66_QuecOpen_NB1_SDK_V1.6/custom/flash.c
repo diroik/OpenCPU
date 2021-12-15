@@ -46,7 +46,7 @@ static sProgrammSettings firstInitSettings =
     .gsmSettings.gprsPass = "",
     //.gsmSettings.gprsDialNumber = "*99***1#",
 
-    .ipSettings.mode = 1,//0-server, 1-client
+    .ipSettings.mode = 1,//0-tcp server, 1-tcp client, 101-tcp client+packetId. When secondsToReconnect!=secondsOfDuration=> periodic connect
     .ipSettings.dstAddress = "server.techmonitor.ru",//"asdu.megafon.ru",
     .ipSettings.dstPort = 9003,
 
@@ -59,12 +59,13 @@ static sProgrammSettings firstInitSettings =
     .serPortSettings.dataBits         	= DB_8BIT,
     .serPortSettings.flowCtrl			= FC_NONE,
 
-    .secondsToReboot 	= 86000,//86400s=1d
-    .secondsToReconnect = 21600,//5400s=1.5h*4=6h
-    .secondsToPing 		= 60, // 300s = 5min
+    .secondsToReboot 	= 600000,//86400s=1d 604800s=1week
+    .secondsToReconnect = 21600,//5400s=1.5h 21600=6h
+    .secondsToPing		= 60, // 300s = 5min
 
-    .serPortDataTimeout = 500,//
-    .gsmPortDataTimeout = 500,//
+    //.serPortDataTimeout = 500,//
+    //.gsmPortDataTimeout = 500,//
+    .secondsOfDuration = 300,
 
     .buttonTimeout = 10,
     .in1Timeout	   = 3,
@@ -74,7 +75,7 @@ static sProgrammSettings firstInitSettings =
 
     .ftpSettings.srvAddress = "94.228.255.152",
     .ftpSettings.srvPort = 21,
-    .ftpSettings.filePath = "/M66/",
+    .ftpSettings.filePath = "/BC66/",
     .ftpSettings.fileName = "APPGS3MDM32.bin",
     .ftpSettings.usrName = "firmware",
     .ftpSettings.usrPassw = "123qwe45RTY"

@@ -58,11 +58,9 @@ s32 GetInputValue(Enum_PinName *pin, s32 *cnt, u32 max_timeout, bool INV)
 {
 	s32 ret = -1;
 	s32 st = Ql_GPIO_GetLevel(*pin);
-
 	if(INV == TRUE){
 		st = st == 0 ? 1 : 0;
 	}
-
 	if(st > 0){
 		if( *cnt <  max_timeout)
 			*(cnt) += 1;
@@ -531,6 +529,40 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 				Ql_strcpy(tmp_buff, "\r\ncommit error\r\n");
 			ret = tmp_buff;
 		}
+		else if(Ql_strcmp(src_str, "cmd update firmware by ftp") == 0)
+		{
+
+			//u8 m_URL_Buffer[512];
+			//ftp://hostname/filePath/fileName:port@username:password
+			s32 strLen = Ql_sprintf(tmp_buff, "ftp://%s%s%s:%d@%s:%s",
+					sett_in_ram->ftpSettings.srvAddress,
+					sett_in_ram->ftpSettings.filePath,
+					sett_in_ram->ftpSettings.fileName,
+					sett_in_ram->ftpSettings.srvPort,
+					sett_in_ram->ftpSettings.usrName,
+					sett_in_ram->ftpSettings.usrPassw
+					);
+
+			//strLen = Ql_sprintf(m_URL_Buffer, "ftp://%s%s%s:%s@%s:%s",FTP_SVR_ADDR, FTP_SVR_PATH, FTP_FILENAME, FTP_SVR_PORT, FTP_USER_NAME, FTP_PASSWORD);
+			/*
+			ST_GprsConfig apnCfg;
+			Ql_memset(&apnCfg, 0x0, sizeof(apnCfg));
+
+			//Ql_memcpy(apnCfg.apnName, 	sett_in_ram->gsmSettings.gprsApn,  Ql_strlen(sett_in_ram->gsmSettings.gprsApn));
+			//Ql_memcpy(apnCfg.apnUserId, 	sett_in_ram->gsmSettings.gprsUser, Ql_strlen(sett_in_ram->gsmSettings.gprsUser));
+			//Ql_memcpy(apnCfg.apnPasswd, 	sett_in_ram->gsmSettings.gprsPass, Ql_strlen(sett_in_ram->gsmSettings.gprsPass));
+
+			Ql_strcpy(apnCfg.apnName, 	sett_in_ram->gsmSettings.gprsApn);
+			Ql_strcpy(apnCfg.apnUserId, 	sett_in_ram->gsmSettings.gprsUser);
+			Ql_strcpy(apnCfg.apnPasswd, 	sett_in_ram->gsmSettings.gprsPass);
+
+
+            APP_DEBUG("Ql_FOTA_StartUpgrade url=[%s], apnName=[%s] apnUserId=[%s] apnPasswd=[%s]\r\n", tmp_buff, apnCfg.apnName, apnCfg.apnUserId, apnCfg.apnPasswd);
+            Ql_FOTA_StartUpgrade(tmp_buff, &apnCfg, NULL);
+            */
+
+			ret = tmp_buff;
+		}
 		if(Ql_strcmp(src_str, "cmd deep sleep mode") == 0)
 		{
 			Ql_strcpy(tmp_buff, "\r\ngo to deep sleep mode\r\n");
@@ -562,6 +594,59 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			programmData->autCnt = AUT_TIMEOUT;//renew timeout if cmd coming
 	}
 	return ret;
+}
+
+char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
+{
+	  char *ret = NULL;
+	  bool r = FALSE;
+
+	  char *ch = Ql_strchr(cmdstr, '=');
+	  if(ch > 0)
+	  {
+		  char cmd[50] = {0};
+	      char val[50] = {0};
+
+	      int len = Ql_strlen(cmdstr);
+	      int clen = (int)ch++ - (int)cmdstr;
+	      int vlen = ((int)cmdstr + len) - (int)ch;
+
+	      if(clen > 0 && vlen > 0)
+	      {
+	    	  Ql_strncpy(cmd, cmdstr, clen);
+	    	  Ql_strncpy(val, ch, vlen);
+
+	    	  vlen = clear_all_nulls(val, vlen);
+	    	  if(vlen <= 0)
+	    		  return NULL;
+
+	    	  APP_DEBUG("<--get_aut_cmd cmd=<%s>, val=<%s>-->\r\n", cmd, val);
+	    	  if(Ql_strcmp(cmd, "authorization") == 0)
+	    	  {
+	    		  if(Ql_strcmp(val, sett_in_ram->securitySettings.cmdPassw) == 0){
+
+	    			  programmData->autCnt = AUT_TIMEOUT;
+	    			  r = TRUE;
+	    		  }
+	    	  }
+
+	    	  if(r == TRUE){
+	    	      Ql_strcpy(tmp_buff, "\r\n");
+	    	      Ql_strcat(tmp_buff, "authorization successful!");
+	    	      Ql_strcat(tmp_buff, "\r\n");
+	    		  ret = tmp_buff;
+	    	  }
+	    	  else{
+	    	      Ql_strcpy(tmp_buff, "\r\n");
+	    	      Ql_strcat(tmp_buff, "authorization ERROR!");
+	    	      Ql_strcat(tmp_buff, "\r\n");
+	    	      ret = tmp_buff;
+	    	  }
+
+	      }
+
+	  }
+	  return ret;
 }
 
 char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
@@ -597,11 +682,13 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  sett_in_ram->ipSettings.mode = 0;
     		  else if(mode == 1)
     			  sett_in_ram->ipSettings.mode = 1;
+    		  else if(mode == 101)
+    			  sett_in_ram->ipSettings.mode = 101;
     		  r = TRUE;
     	  }
     	  else if(Ql_strcmp(cmd, "apn") == 0)
     	  {
-    		  if(vlen <= MAX_GPRS_APN_LEN)
+    		  if(vlen < MAX_GPRS_APN_LEN)
     		  {
     			  Ql_memset(sett_in_ram->gsmSettings.gprsApn, 0, MAX_GPRS_APN_LEN);
     			  Ql_strncpy(sett_in_ram->gsmSettings.gprsApn, val, vlen);
@@ -626,6 +713,61 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
+    	  //firmware ftp update
+    	  else if(Ql_strcmp(cmd, "ftp user") == 0)
+    	  {
+    		  if(vlen < MAX_FTP_USER_NAME_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->ftpSettings.usrName, 0, MAX_FTP_USER_NAME_LEN);
+    			  Ql_strncpy(sett_in_ram->ftpSettings.usrName, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "ftp password") == 0)
+    	  {
+    		  if(vlen < MAX_FTP_PASSWORD_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->ftpSettings.usrPassw, 0, MAX_FTP_PASSWORD_LEN);
+    			  Ql_strncpy(sett_in_ram->ftpSettings.usrPassw, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "ftp address") == 0)
+    	  {
+    		  if(vlen < MAX_FTP_ADDRESS_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->ftpSettings.srvAddress, 0, MAX_FTP_ADDRESS_LEN);
+    			  Ql_strncpy(sett_in_ram->ftpSettings.srvAddress, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "ftp port") == 0)
+    	  {
+    		  s32 port = Ql_atoi(val);
+    		  if(port > 0){
+    			  sett_in_ram->ftpSettings.srvPort = port;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "ftp filename") == 0)
+    	  {
+    		  if(vlen < MAX_FTP_FILENAME_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->ftpSettings.fileName, 0, MAX_FTP_FILENAME_LEN);
+    			  Ql_strncpy(sett_in_ram->ftpSettings.fileName, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "ftp filepath") == 0)
+    	  {
+    		  if(vlen < MAX_FTP_FILEPATH_LEN)
+    		  {
+    			  Ql_memset(sett_in_ram->ftpSettings.filePath, 0, MAX_FTP_FILEPATH_LEN);
+    			  Ql_strncpy(sett_in_ram->ftpSettings.filePath, val, vlen);
+    			  r = TRUE;
+    		  }
+    	  }
+    	  ///////////////////
     	  else if(Ql_strcmp(cmd, "daddress") == 0)
     	  {
     		  if(vlen < MAX_ADDRESS_LEN)
@@ -657,22 +799,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     		  s32 port = Ql_atoi(val);
     		  if(port > 0){
     			  sett_in_ram->ipSettings.srcPort = port;
-    			  r = TRUE;
-    		  }
-    	  }
-    	  else if(Ql_strcmp(cmd, "sertimeout") == 0)
-    	  {
-    		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 0){
-    			  sett_in_ram->serPortDataTimeout = timeout;
-    			  r = TRUE;
-    		  }
-    	  }
-    	  else if(Ql_strcmp(cmd, "gsmtimeout") == 0)
-    	  {
-    		  s32 timeout = Ql_atoi(val);
-    		  if(timeout > 0){
-    			  sett_in_ram->gsmPortDataTimeout = timeout;
     			  r = TRUE;
     		  }
     	  }
@@ -719,15 +845,23 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  else if(Ql_strcmp(cmd, "toreconnect") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout >= 180){ // 3 min
+    		  if(timeout >= 120){ //2 min
     			  sett_in_ram->secondsToReconnect = timeout;
     			  r = TRUE;
     		  }
     	  }
-    	  else if(Ql_strcmp(cmd, "toping") == 0)
+    	  else if(Ql_strcmp(cmd, "duration") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value >= 30){//30 sec
+    			  sett_in_ram->secondsOfDuration = value;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
-    		  if(timeout >= 60){ // 1 min
+    		  if(timeout >= 30){ // 0.5 min
     			  sett_in_ram->secondsToPing = timeout;
     			  r = TRUE;
     		  }
@@ -754,8 +888,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
         	      return ret;
     		  }
     	  }
-
-
 
     	  if(r == TRUE){
     		  *(--ch) = 0;
@@ -819,6 +951,63 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    //firmware ftp update
+    else if(Ql_strcmp(cmd, "ftp user") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrName);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "ftp password") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrPassw);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "ftp address") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.srvAddress);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "ftp port") == 0)
+    {
+	  Ql_sprintf(tbuff ,"%d", sett_in_ram->ftpSettings.srvPort);
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, tbuff);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "ftp filename") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.fileName);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "ftp filepath") == 0)
+    {
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.filePath);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    ////////////////////////////////////////
     else if(Ql_strcmp(cmd, "daddress") == 0)
     {
       Ql_strcpy(tmp_buff, "\r\n");
@@ -857,19 +1046,9 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
-    else if(Ql_strcmp(cmd, "sertimeout") == 0)
+    else if(Ql_strcmp(cmd, "duration") == 0)
     {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->serPortDataTimeout);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "gsmtimeout") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->gsmPortDataTimeout);
+	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsOfDuration);
       Ql_strcpy(tmp_buff, "\r\n");
       Ql_strcat(tmp_buff, cmd);
       Ql_strcat(tmp_buff, "=");
@@ -879,9 +1058,6 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     }
     else if(Ql_strcmp(cmd, "baudrate") == 0)
     {
-
-      //APP_DEBUG("get_cmd cmd=<baudrate>, sett_in_ram->serPortSettings.baudrate=%d\r\n", sett_in_ram->serPortSettings.baudrate);
-
 	  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
       Ql_strcpy(tmp_buff, "\r\n");
       Ql_strcat(tmp_buff, cmd);
@@ -943,7 +1119,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
-    else if(Ql_strcmp(cmd, "toping") == 0)
+    else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     {
 	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToPing);
       Ql_strcpy(tmp_buff, "\r\n");
@@ -1015,7 +1191,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     }
     else if(Ql_strcmp(cmd, "input1 value") == 0)
         {
-        	Ql_sprintf(tbuff ,"%d", programmData->in1State);
+        	Ql_sprintf(tbuff ,"%d", programmData->dataState.in1);
         	Ql_strcpy(tmp_buff, "\r\n");
           	Ql_strcat(tmp_buff, cmd);
           	Ql_strcat(tmp_buff, "=");
@@ -1025,7 +1201,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
         }
         else if(Ql_strcmp(cmd, "input2 value") == 0)
         {
-        	Ql_sprintf(tbuff ,"%d", programmData->in2State);
+        	Ql_sprintf(tbuff ,"%d", programmData->dataState.in2);
         	Ql_strcpy(tmp_buff, "\r\n");
           	Ql_strcat(tmp_buff, cmd);
           	Ql_strcat(tmp_buff, "=");
@@ -1035,7 +1211,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
         }
         else if(Ql_strcmp(cmd, "termo value") == 0 || Ql_strcmp(cmd, "temp value") == 0)
         {
-        	Ql_sprintf(tbuff ,"%f", programmData->tempValue);
+        	Ql_sprintf(tbuff ,"%f", programmData->dataState.temp);
         	Ql_strcpy(tmp_buff, "\r\n");
           	Ql_strcat(tmp_buff, cmd);
           	Ql_strcat(tmp_buff, "=");
@@ -1053,58 +1229,49 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
   return ret;
 }
 
-
-char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
+/***********************************************************************
+ * Pid analize
+************************************************************************/
+bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket)
 {
-	  char *ret = NULL;
-	  bool r = FALSE;
+	bool ret = FALSE;
+	if(len > 4)
+	{
+		bShort tmp;
+		tmp.Data_b[1] = buffer[2];
+		tmp.Data_b[0] = buffer[3];
+		if(tmp.Data_s == (len-4)){
+			u8 pid = buffer[0];
+			u8 typ = buffer[1];
+			//if(typ == 0x02){//0x02-from server, 0x03-from device, 0x0B-init packet (???)
+			lastPacket->pid 	= pid;
+			lastPacket->type 	= typ;
+			lastPacket->len		= tmp.Data_s;
+			ret = TRUE;
 
-	  char *ch = Ql_strchr(cmdstr, '=');
-	  if(ch > 0)
-	  {
-		  char cmd[50] = {0};
-	      char val[50] = {0};
+			APP_DEBUG("<-- AnalizePidPacket: pid=%d, type=%d, len=%d -->\r\n", lastPacket->pid, lastPacket->type, lastPacket->len);
 
-	      int len = Ql_strlen(cmdstr);
-	      int clen = (int)ch++ - (int)cmdstr;
-	      int vlen = ((int)cmdstr + len) - (int)ch;
+			//}
+		}
+	}
+	return ret;
+}
 
-	      if(clen > 0 && vlen > 0)
-	      {
-	    	  Ql_strncpy(cmd, cmdstr, clen);
-	    	  Ql_strncpy(val, ch, vlen);
+s32 AddPidHeader(u8 typ, u8* buffer, s32 len, sPidPacket *lastPacket)
+{
+	s32 ret = 0;
+	if(lastPacket != NULL && len > 0){
+		bShort tmp;
+		tmp.Data_s = len;
 
-	    	  vlen = clear_all_nulls(val, vlen);
-	    	  if(vlen <= 0)
-	    		  return NULL;
+		buffer[ret++] = (u8)lastPacket->pid;
+		buffer[ret++] = typ;
+		buffer[ret++] = tmp.Data_b[1];
+		buffer[ret++] = tmp.Data_b[0];
 
-	    	  APP_DEBUG("<--get_aut_cmd cmd=<%s>, val=<%s>-->\r\n", cmd, val);
-	    	  if(Ql_strcmp(cmd, "authorization") == 0)
-	    	  {
-	    		  if(Ql_strcmp(val, sett_in_ram->securitySettings.cmdPassw) == 0){
-
-	    			  programmData->autCnt = AUT_TIMEOUT;
-	    			  r = TRUE;
-	    		  }
-	    	  }
-
-	    	  if(r == TRUE){
-	    	      Ql_strcpy(tmp_buff, "\r\n");
-	    	      Ql_strcat(tmp_buff, "authorization successful!");
-	    	      Ql_strcat(tmp_buff, "\r\n");
-	    		  ret = tmp_buff;
-	    	  }
-	    	  else{
-	    	      Ql_strcpy(tmp_buff, "\r\n");
-	    	      Ql_strcat(tmp_buff, "authorization ERROR!");
-	    	      Ql_strcat(tmp_buff, "\r\n");
-	    	      ret = tmp_buff;
-	    	  }
-
-	      }
-
-	  }
-	  return ret;
+		APP_DEBUG("<-- AddPidHeader: pid=%d, typ=%d, len=%d -->\r\n", lastPacket->pid, typ, tmp.Data_s);
+	}
+	return ret;
 }
 
 

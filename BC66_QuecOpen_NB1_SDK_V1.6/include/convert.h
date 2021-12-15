@@ -34,7 +34,7 @@ u32 convertToHex(char *dest, char *src, u32 len);
 u32 convertFromHex(char *dest, char *src, u32 len);
 
 bool fromJSON(char* str, sDataJsonParams* out);
-
+s32 toJSON(char *dst, sDataJsonParams *src);
 
 
 

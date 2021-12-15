@@ -99,7 +99,7 @@
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.541796732" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="TASK_FUNC_DECLARATION"/>
 									<listOptionValue builtIn="false" value="TASK_DEFINITION"/>
-									<listOptionValue builtIn="false" value="__EXAMPLE_TCPCLIENT_API__"/>
+									<listOptionValue builtIn="false" value="__GSM_TEMINAL__"/>
 								</option>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.459165674" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/include}&quot;"/>

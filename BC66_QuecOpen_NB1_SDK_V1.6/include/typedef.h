@@ -36,9 +36,14 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 #define MAX_KOEFF_LEN 2
 #define AUT_PASSWORD_LEN 16
 
-#define AUT_TIMEOUT 300
+#define MAX_FTP_ADDRESS_LEN 32
+#define MAX_FTP_USER_NAME_LEN 16
+#define MAX_FTP_PASSWORD_LEN  16
+#define MAX_FTP_FILENAME_LEN  16
+#define MAX_FTP_FILEPATH_LEN  16
 
 #define RESISTOR 2000.0
+#define AUT_TIMEOUT 300
 
 typedef enum{
     TCP_STATE_NW_GET_SIMSTATE,
@@ -71,6 +76,11 @@ typedef enum{
 
 }Enum_NIDDSTATE;
 
+typedef union
+{
+    u16 Data_s;
+    u8  Data_b[2];
+} bShort;
 
 typedef union
 {
@@ -117,19 +127,22 @@ typedef struct{
 }sIpSettings;
 
 typedef struct{
-    char                srvAddress[32];
-    char				filePath[16];
-    char                fileName[16];
-
+    char                srvAddress[MAX_FTP_ADDRESS_LEN];
+    char				filePath[MAX_FTP_FILEPATH_LEN];
+    char                fileName[MAX_FTP_FILENAME_LEN];
     unsigned int        srvPort;
-
-    char				usrName[16];
-    char				usrPassw[16];
+    char				usrName[MAX_FTP_USER_NAME_LEN];
+    char				usrPassw[MAX_FTP_PASSWORD_LEN];
 }sFtpSettings;
 
 typedef struct{
 	char				cmdPassw[16];
 }sSecuritySettings;
+
+
+#ifdef __PROJECT_SMART_BUTTON__
+
+#define FW_VERSION "1.0"
 
 typedef struct{
 	u32 pid;
@@ -143,12 +156,6 @@ typedef struct{
 	char iccid[21];
 
 }sDataJsonParams;
-
-
-
-#ifdef __PROJECT_SMART_BUTTON__
-
-#define FW_VERSION "1.0"
 
 typedef struct{
     bool        	needReboot;
@@ -195,7 +202,33 @@ typedef struct{
 
 #else
 
-#define FW_VERSION "1.1"
+#define FW_VERSION "1.31"
+
+typedef struct{
+	u32 pid;
+	bool state;
+	bool confirm;
+    char            imei[30];
+    char 			iccid[30];
+    u32				totalSeconds;
+    s32 			timezone;
+    bool 			button;
+    bool 			in1;
+    bool 			in2;
+    float 			temp;
+	u16 			voltage;
+	u16 			capacity;
+    s32 			rssi;
+    s32		 		ber;
+    char 			version[10];
+}sDataJsonParams;
+
+typedef struct{
+	u16 pid;
+	u16 type;
+	u16 len;
+	u32 timeStamp;
+}sPidPacket;
 
 typedef struct{
     u16    crc;
@@ -210,42 +243,43 @@ typedef struct{
     u32            	secondsToReboot;
     u32            	secondsToReconnect;
     u32				secondsToPing;
-
-    u16            	serPortDataTimeout;//period
-    u16            	gsmPortDataTimeout;//duration
+    //u16            	serPortDataTimeout;//period
+    //u16            	gsmPortDataTimeout;//duration
+    u32				secondsOfDuration;
     //u16            	smsRecvTimeout;
-
     u8				buttonTimeout;//in sec
     u8				in1Timeout;
     u8				in2Timeout;
-
     sSecuritySettings 	securitySettings;
     sFtpSettings		ftpSettings;
 }sProgrammSettings;
 
 typedef struct{
+	s32				mainTaskId;
+	s32				subTaskId1;
     bool        	needReboot;
     bool 			firstInit;
-    bool			initFlash;
+    bool			timeInit;
+    bool			socketTimersInit;
+    //sBuffer     gsmRxBuffer;
+    //sBuffer     serRxBuffer;
+
+    //sBuffer     serToGsmRxBuffer;
+    //sBuffer     gsmToSerRxBuffer;
 
     s32				buttonCnt;//in 100 ms
     s32 		   	in1Cnt;
     s32				in2Cnt;
-
-    bool 			buttonState;
     bool 			HbuttonState;
-    bool 			in1State;
     bool 			Hin1State;
-    bool 			in2State;
     bool 			Hin2State;
-    float 			tempValue;
-
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	durationCnt;
     u32            	pingCnt;
     u32 			autCnt;
-
-    u32				totalSeconds;
+    sDataJsonParams dataState;
+    sPidPacket      lastPacket;
 
     //s64				buttonTimerTimeout;//in 10 ms
 
