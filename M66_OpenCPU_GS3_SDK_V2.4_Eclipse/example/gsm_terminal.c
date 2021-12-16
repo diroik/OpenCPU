@@ -512,7 +512,6 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	}
 	else if (LED_TIMER_ID == timerId)
 	{
-		//led_cnt
 	    if(led_cnt-- < 0)
 	    {// 1 sec
 	      led_cnt = 20;
@@ -702,8 +701,9 @@ void callback_socket_connect(s32 socketId, s32 errCode, void* customParam )
     }
     else
     {
-        APP_DEBUG("<--Callback: socket connect failure,(socketId=%d),errCode=%d-->\r\n",socketId,errCode);
+        APP_DEBUG("<--Callback: socket connect failure,(socketId=%d),errCode=%d-->\r\n",socketId, errCode);
         Ql_SOC_Close(socketId);
+        socketId = -1;
         m_tcp_state = STATE_SOC_CREATE;
     }
 }
@@ -1425,6 +1425,7 @@ static void InitGPRS(void)
     //register & start timer
 	APP_DEBUG("<-- InitGPRS -->\r\n");
 
+    //register & start timer
     Ql_Timer_Register(TCP_TIMER_ID, gsm_callback_onTimer, NULL);
     Ql_Timer_Start(TCP_TIMER_ID, TCP_TIMER_PERIOD, TRUE);
 
@@ -1497,6 +1498,9 @@ static void InitTIME(void)
     Ql_Timer_Register(SYSTEM_TIME_TIMER_ID, time_callback_onTimer, (void*)&upTime);
     Ql_Timer_Start(SYSTEM_TIME_TIMER_ID, 1000, TRUE);
 
+    ret = RIL_NW_GetSignalQuality(&programmData.dataState.rssi, &programmData.dataState.ber);
+    APP_DEBUG("<-- Signal strength: %d, BER: %d -->\r\n", upTime, programmData.dataState.rssi, programmData.dataState.ber);
+
 	//SYSTEM_TIME_TIMER_ID
 	APP_DEBUG("<-- InitTIME end -->\r\n");
 }
@@ -1565,7 +1569,8 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 	{
 		//send it to server
 		m_pCurrentPos = m_send_buf;
-		if(programmSettings.ipSettings.mode == 101){
+		if(programmSettings.ipSettings.mode == 101)
+		{
 			//APP_DEBUG("<-- proc_handle: m_remain_len=%d -->\r\n", m_remain_len);
 			m_remain_len += AddPidHeader(0x03, (u8*)(m_pCurrentPos + m_remain_len), len, &programmData.lastPacket);
 			//APP_DEBUG("proc_handle: m_remain_len(after AddPidHeader)=%d", m_remain_len);
@@ -1620,5 +1625,4 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 		}
 	}
 }
-
 #endif // __GSM_TEMINAL__

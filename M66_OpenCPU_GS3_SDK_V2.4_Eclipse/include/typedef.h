@@ -154,6 +154,13 @@ typedef struct{
 }sDataJsonParams;
 
 typedef struct{
+	u16 pid;
+	u16 type;
+	u16 len;
+	u32 timeStamp;
+}sPidPacket;
+
+typedef struct{
     u16    crc;
     u8     tmp1;
     u8     tmp2; //tmp for aligned to 4 bytes
@@ -174,13 +181,6 @@ typedef struct{
     sSecuritySettings 	securitySettings;
     sFtpSettings		ftpSettings;
 }sProgrammSettings;
-
-typedef struct{
-	u16 pid;
-	u16 type;
-	u16 len;
-	u32 timeStamp;
-}sPidPacket;
 
 typedef struct{
 

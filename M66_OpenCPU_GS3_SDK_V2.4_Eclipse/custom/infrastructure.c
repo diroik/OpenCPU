@@ -338,7 +338,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "apn") == 0)
     	  {
-    		  if(vlen <= MAX_GPRS_APN_LEN)
+    		  if(vlen < MAX_GPRS_APN_LEN)
     		  {
     			  Ql_memset(sett_in_ram->gsmSettings.gprsApn, 0, MAX_GPRS_APN_LEN);
     			  Ql_strncpy(sett_in_ram->gsmSettings.gprsApn, val, vlen);
@@ -347,7 +347,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "user") == 0)
     	  {
-    		  if(vlen <= MAX_GPRS_USER_NAME_LEN)
+    		  if(vlen < MAX_GPRS_USER_NAME_LEN)
     		  {
     			  Ql_memset(sett_in_ram->gsmSettings.gprsUser, 0, MAX_GPRS_USER_NAME_LEN);
     			  Ql_strncpy(sett_in_ram->gsmSettings.gprsUser, val, vlen);
@@ -356,7 +356,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "password") == 0)
     	  {
-    		  if(vlen <= MAX_GPRS_PASSWORD_LEN)
+    		  if(vlen < MAX_GPRS_PASSWORD_LEN)
     		  {
     			  Ql_memset(sett_in_ram->gsmSettings.gprsPass, 0, MAX_GPRS_PASSWORD_LEN);
     			  Ql_strncpy(sett_in_ram->gsmSettings.gprsPass, val, vlen);
@@ -368,7 +368,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  //firmware ftp update
     	  else if(Ql_strcmp(cmd, "ftp user") == 0)
     	  {
-    		  if(vlen <= MAX_FTP_USER_NAME_LEN)
+    		  if(vlen < MAX_FTP_USER_NAME_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ftpSettings.usrName, 0, MAX_FTP_USER_NAME_LEN);
     			  Ql_strncpy(sett_in_ram->ftpSettings.usrName, val, vlen);
@@ -386,7 +386,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "ftp address") == 0)
     	  {
-    		  if(vlen <= MAX_FTP_ADDRESS_LEN)
+    		  if(vlen < MAX_FTP_ADDRESS_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ftpSettings.srvAddress, 0, MAX_FTP_ADDRESS_LEN);
     			  Ql_strncpy(sett_in_ram->ftpSettings.srvAddress, val, vlen);
@@ -403,7 +403,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "ftp filename") == 0)
     	  {
-    		  if(vlen <= MAX_FTP_FILENAME_LEN)
+    		  if(vlen < MAX_FTP_FILENAME_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ftpSettings.fileName, 0, MAX_FTP_FILENAME_LEN);
     			  Ql_strncpy(sett_in_ram->ftpSettings.fileName, val, vlen);
@@ -412,7 +412,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "ftp filepath") == 0)
     	  {
-    		  if(vlen <= MAX_FTP_FILEPATH_LEN)
+    		  if(vlen < MAX_FTP_FILEPATH_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ftpSettings.filePath, 0, MAX_FTP_FILEPATH_LEN);
     			  Ql_strncpy(sett_in_ram->ftpSettings.filePath, val, vlen);
@@ -423,7 +423,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
 
     	  else if(Ql_strcmp(cmd, "daddress") == 0)
     	  {
-    		  if(vlen <= MAX_ADDRESS_LEN)
+    		  if(vlen < MAX_ADDRESS_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ipSettings.dstAddress, 0, MAX_ADDRESS_LEN);
     			  Ql_strncpy(sett_in_ram->ipSettings.dstAddress, val, vlen);
@@ -432,7 +432,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "saddress") == 0)
     	  {
-    		  if(vlen <= MAX_ADDRESS_LEN)
+    		  if(vlen < MAX_ADDRESS_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ipSettings.srcAddress, 0, MAX_ADDRESS_LEN);
     			  Ql_strncpy(sett_in_ram->ipSettings.srcAddress, val, vlen);
@@ -455,7 +455,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
-
     	  else if(Ql_strcmp(cmd, "baudrate") == 0)
     	  {
     		  s32 speed = Ql_atoi(val);
@@ -542,7 +541,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
         	      return ret;
     		  }
     	  }
-
 
     	  if(r == TRUE){
     		  *(--ch) = 0;

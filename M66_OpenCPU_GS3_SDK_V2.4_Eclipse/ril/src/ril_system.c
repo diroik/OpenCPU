@@ -175,6 +175,10 @@ s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
     return ret;
 }
 
+/*
+ * 13 blocks: 1-8 block store 50 bytes, 9-12 store 100 bytes, 13 block store 500 bytes
+ *
+ * */
 s32 Ql_SecureData_Store(u8 index , u8* pData, u32 len)
 {
     s32 ret,i,AtHeadlen, hexstrlen;
