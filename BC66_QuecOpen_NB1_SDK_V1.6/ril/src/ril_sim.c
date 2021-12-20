@@ -39,6 +39,7 @@
 #include "ql_error.h"
 #include "ql_system.h"
 #include "ql_trace.h"
+#include "typedef.h"
 
 #ifdef __OCPU_RIL_SUPPORT__
 
@@ -205,6 +206,8 @@ static s32 ATRsp_CCID_Handler(char* line, u32 len, void* param)
 {
 	char* p1 = NULL;
     char* p2 = NULL;
+
+    APP_DEBUG("ATRsp_CCID_Handler line=<%s>\r\n", line);
 
     p1 = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
     if (p1)

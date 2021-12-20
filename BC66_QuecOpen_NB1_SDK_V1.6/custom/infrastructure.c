@@ -529,21 +529,21 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 				Ql_strcpy(tmp_buff, "\r\ncommit error\r\n");
 			ret = tmp_buff;
 		}
-		else if(Ql_strcmp(src_str, "cmd update firmware by ftp") == 0)
+		else if(Ql_strcmp(src_str, "cmd update firmware by http") == 0)
 		{
 
 			//u8 m_URL_Buffer[512];
 			//ftp://hostname/filePath/fileName:port@username:password
-			s32 strLen = Ql_sprintf(tmp_buff, "ftp://%s%s%s:%d@%s:%s",
+
+			s32 strLen = Ql_sprintf(tmp_buff, "http://%s:%d%s%s",
 					sett_in_ram->ftpSettings.srvAddress,
-					sett_in_ram->ftpSettings.filePath,
-					sett_in_ram->ftpSettings.fileName,
 					sett_in_ram->ftpSettings.srvPort,
-					sett_in_ram->ftpSettings.usrName,
-					sett_in_ram->ftpSettings.usrPassw
+					sett_in_ram->ftpSettings.filePath,
+					sett_in_ram->ftpSettings.fileName
 					);
 
-			//strLen = Ql_sprintf(m_URL_Buffer, "ftp://%s%s%s:%s@%s:%s",FTP_SVR_ADDR, FTP_SVR_PATH, FTP_FILENAME, FTP_SVR_PORT, FTP_USER_NAME, FTP_PASSWORD);
+			APP_DEBUG("RIL_DFOTA_Upgrade url=[%s]\r\n", tmp_buff);
+			RIL_DFOTA_Upgrade(tmp_buff);
 			/*
 			ST_GprsConfig apnCfg;
 			Ql_memset(&apnCfg, 0x0, sizeof(apnCfg));
@@ -1139,6 +1139,38 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       	Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    else if(Ql_strcmp(cmd, "firmware version") == 0)
+    {
+      	s32 rr = RIL_GetFirmwareVer(tbuff); //Ql_GetSDKVer((u8*)tbuff, sizeof(tbuff));
+      	if(rr < 0){
+      		Ql_sprintf(tbuff ,"%s", "Get Firmware Version Failure");
+      	}
+      	else{
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+      	}
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "battery voltage") == 0)
+    {
+    	u32 capacity, voltage;
+    	s32 rr = RIL_GetPowerSupply(&capacity, &voltage);
+      	if(rr < 0){
+      		Ql_sprintf(tbuff ,"%s", "Get GetPowerSupply Failure");
+      	}
+      	else{
+      		Ql_sprintf(tbuff ,"capacity:%d, voltage:%d", capacity, voltage);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+      	}
+      ret = tmp_buff;
+    }
     else if(Ql_strcmp(cmd, "sampling count") == 0)
     {
     	Ql_sprintf(tbuff ,"%d", sett_in_ram->adcSettings.samplingCount);
@@ -1240,7 +1272,8 @@ bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket)
 		bShort tmp;
 		tmp.Data_b[1] = buffer[2];
 		tmp.Data_b[0] = buffer[3];
-		if(tmp.Data_s == (len-4)){
+		if(tmp.Data_s == (len-4))
+		{
 			u8 pid = buffer[0];
 			u8 typ = buffer[1];
 			//if(typ == 0x02){//0x02-from server, 0x03-from device, 0x0B-init packet (???)

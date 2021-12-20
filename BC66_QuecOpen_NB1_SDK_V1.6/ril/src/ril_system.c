@@ -51,12 +51,13 @@
 static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
 {
     ST_SysPower *PowerSupply;
-
     PowerSupply = (ST_SysPower *)userdata;
+
     char *head = Ql_RIL_FindString(line, len, "+CBC:"); //continue wait
+    //APP_DEBUG("Power_ATResponse_Hanlder line=<%s>\r\n", line);
     if(head)
     {
-    	APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", head);
+    	//APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", head);
         /*char strTmp[10];
         char *p1,*p2;
         p1 = Ql_strstr(head, ":");
@@ -83,9 +84,6 @@ static s32 Power_ATResponse_Hanlder(char* line, u32 len, void* userdata)
         }*/
     	s32 n = 0;
         Ql_sscanf(head,"%*[^ ]%d,%d,%d,%[^\r\n]", &n, &PowerSupply->capacity, &PowerSupply->voltage);
-        //APP_DEBUG("Power_ATResponse_Hanlder n=<%d>, capacity=<%d>, voltage=<%d>\r\n", n, PowerSupply->capacity, PowerSupply->voltage);
-
-
         return  RIL_ATRSP_CONTINUE;
     }
 
@@ -134,14 +132,23 @@ static s32 ATRsp_Firmware_Handler(char* line, u32 len, void* param)
 	pHead = Ql_RIL_FindString(line, len, "Revision:");//continue wait
     if (pHead)
     {
+    	//APP_DEBUG("Power_ATResponse_Hanlder head=<%s>\r\n", pHead);
         char* p1 = NULL;
         char* p2 = NULL;
 		
         p1 = Ql_strstr(pHead, ":");
-        p2 = Ql_strstr(p1 + 1, "\r\n");
-        if (p1 && p2)
-        {
-            Ql_memcpy((char*)param, p1 + 2, p2 - p1 - 2);
+        if(p1 > 0){
+        	//APP_DEBUG("Power_ATResponse_Hanlder p1=<%s>\r\n", p1);
+            p2 = Ql_strstr(p1, "\r\n");
+            if (p2 > 0)
+            {
+            	//APP_DEBUG("Power_ATResponse_Hanlder p2=<%s>\r\n", p2);
+            	if(p2 > p1){
+            		//APP_DEBUG("Power_ATResponse_Hanlder len=<%d>\r\n", len);
+            		s32 len = (p2-p1) - 1;
+            		Ql_memcpy((char*)param, ++p1, len);
+            	}
+            }
         }
     }
     return RIL_ATRSP_CONTINUE; //continue wait
@@ -167,9 +174,10 @@ static s32 ATRsp_IMEI_Handler(char* line, u32 len, void* param)
     {
         return RIL_ATRSP_FAILED;
     }
-	pHead = Ql_RIL_FindString(line, len, "+CGSN:");//fail
+	pHead = Ql_RIL_FindString(line, len, "+CGSN:");//
     if (pHead)
     {
+    	APP_DEBUG("ATRsp_IMEI_Handler head=<%s>\r\n", pHead);
         char* p1 = NULL;
         char* p2 = NULL;
 		
@@ -229,7 +237,7 @@ s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
     s32 ret;
     ST_SysPower PowerSupply;
 
-    char strAT[]="AT+CBC\0";
+    char strAT[20]="AT+CBC\n";
 
     ret = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), Power_ATResponse_Hanlder, (void *)&PowerSupply, 0);
     if (RIL_AT_SUCCESS == ret)
@@ -243,7 +251,7 @@ s32 RIL_GetPowerSupply(u32* capacity, u32* voltage)
 
 s32 RIL_GetFirmwareVer(char* version)
 {
-	char strAT[]="AT+CGMR\0";
+	char strAT[20]="AT+CGMR\n";
 
 	if(version == NULL)
 	{
