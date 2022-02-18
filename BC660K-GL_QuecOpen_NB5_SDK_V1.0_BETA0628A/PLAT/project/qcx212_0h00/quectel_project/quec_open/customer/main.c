@@ -25,7 +25,7 @@
  * 
  ****************************************************************************/
 
-#ifdef __CUSTOMER_CODE__
+#ifdef __CUSTOMER_CODE1__
 #include <stdio.h>
 #include <string.h>
 #include "cmsis_os2.h"

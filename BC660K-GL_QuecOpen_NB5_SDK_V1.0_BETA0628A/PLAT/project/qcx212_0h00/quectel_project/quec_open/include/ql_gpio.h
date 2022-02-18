@@ -46,22 +46,22 @@ typedef enum
     *  <<<BEGIN: The fowllowing PINs for BC260Y
     *            (TOTAL: 16)
     ***************************************************/
-    PINNAME_SPI_MISO = 0,
-    PINNAME_SPI_MOSI,
-    PINNAME_SPI_SCLK,
-    PINNAME_SPI_CS,
-    PINNAME_GPIO1,			//not support eint
-    PINNAME_I2C_SCL,			
-    PINNAME_I2C_SDA,
-    PINNAME_MAIN_CTS,
-    PINNAME_MAIN_RTS,
-    PINNAME_GPIO2,
-    PINNAME_RXD_AUX,		//not support eint
-    PINNAME_TXD_AUX,		//not support eint
-    PINNAME_GPIO3,
-    PINNAME_GPIO4,
-    PINNAME_GPIO5,
-    PINNAME_GPIO6,		
+    PINNAME_SPI_MISO = 0,							//3
+    PINNAME_SPI_MOSI,								//4
+    PINNAME_SPI_SCLK,								//5
+    PINNAME_SPI_CS,									//6
+    PINNAME_GPIO1,			//not support eint		//16
+    PINNAME_I2C_SCL,								//20
+    PINNAME_I2C_SDA,								//21
+    PINNAME_MAIN_CTS,								//22
+    PINNAME_MAIN_RTS,								//23
+    PINNAME_GPIO2,									//26
+    PINNAME_RXD_AUX,		//not support eint		//28
+    PINNAME_TXD_AUX,		//not support eint		//29
+    PINNAME_GPIO3,									//30
+    PINNAME_GPIO4,									//31
+    PINNAME_GPIO5,									//32
+    PINNAME_GPIO6,									//33
     
 	PINNAME_END
 }Enum_PinName;

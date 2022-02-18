@@ -63,7 +63,7 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 void DefAtRsp_CallBack(char* line, u32 len, void* userData)
 {
-    APP_DEBUG("[DefAtRsp][%s].-->\r\n",line);
+    APP_DEBUG("[DefAtRsp][%s].-->\r\n", line);
 }
 
 bool QSDK_Get_Str(char *src_string,  char *dest_string, unsigned char index)

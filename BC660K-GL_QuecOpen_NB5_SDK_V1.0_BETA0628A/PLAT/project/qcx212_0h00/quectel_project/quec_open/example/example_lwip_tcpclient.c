@@ -56,7 +56,7 @@
 #include "ril.h"
 #include "ql_dbg.h"
 
-#define DEBUG_ENABLE 1
+#define DEBUG_ENABLE 0
 #if DEBUG_ENABLE > 0
 #define DEBUG_PORT  PORT_DBG_LOG
 #define DBG_BUF_LEN   512

@@ -38,7 +38,7 @@ QC_FWUPD_AT_FEATURE_ENABLE             = n
 #-------------------------------------------------------------------------------
 # Configure example and out target  Select only one
 #-------------------------------------------------------------------------------
-GLOBAL_EXPORT_FLAG += __CUSTOMER_CODE__
+#GLOBAL_EXPORT_FLAG += __CUSTOMER_CODE__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_GPIO__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_EINT__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_PS__
@@ -56,6 +56,7 @@ GLOBAL_EXPORT_FLAG += __CUSTOMER_CODE__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_LWIP_TCPCLIENT__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_LWIP_UDPCLIENT__
 #GLOBAL_EXPORT_FLAG += __EXAMPLE_MQTT__
+GLOBAL_EXPORT_FLAG += __PROJECT_SMART_BUTTON__
 #-------------------------------------------------------------------------------
 # Configure example and out target  Select only one
 #-------------------------------------------------------------------------------

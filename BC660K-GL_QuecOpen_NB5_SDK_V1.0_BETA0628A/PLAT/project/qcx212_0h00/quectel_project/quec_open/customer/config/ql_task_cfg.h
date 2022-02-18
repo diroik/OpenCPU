@@ -23,13 +23,18 @@ TASK_ITEM("main_task",
 *  The official recommendation of FreeRTOS is to reserve twice the maximum task stack.
 *****************************************************************************/
 #if defined(__EXAMPLE_FILESYSTEM__) || defined(__EXAMPLE_RTC__)
-2048	
+2*1024
 #else
-1024
+1*1024
 #endif
 ,              osPriorityNone,      proc_main_task,         NULL)
 
 #ifdef __EXAMPLE_MULTITASK__
 TASK_ITEM("sub_task1",			512,			   osPriorityNone,		sub_task1,		        NULL)
 TASK_ITEM("sub_task2",			512,			   osPriorityNone,		sub_task2,	            NULL)
+#endif
+
+#ifdef __PROJECT_SMART_BUTTON__
+TASK_ITEM("sub_task1",			1*1024,			   osPriorityNone,		sub_task1,		        NULL)
+TASK_ITEM("sub_task2",			1*1024,			   osPriorityNone,		sub_task2,	            NULL)
 #endif
