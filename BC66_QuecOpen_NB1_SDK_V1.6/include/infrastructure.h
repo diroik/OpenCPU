@@ -15,6 +15,8 @@
 #include "ql_gpio.h"
 #include "ql_uart.h"
 #include "ql_power.h"
+#include "ql_system.h"
+#include "ril_dfota.h"
 #include "ril_network.h"
 #include "typedef.h"
 #include "flash.h"

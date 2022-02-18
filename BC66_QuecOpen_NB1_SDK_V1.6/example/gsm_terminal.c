@@ -50,6 +50,7 @@ static u8 m_RxBuf_Uart[SERIAL_RX_BUFFER_LEN];
 #define GPIO_TIMER_ID 		 		(TIMER_ID_USER_START + 5)
 #define LED_TIMER_ID 		 		(TIMER_ID_USER_START + 6)
 #define SYSTEM_TIME_TIMER_ID 		(TIMER_ID_USER_START + 7)
+#define ADC_TIMER_ID 				(TIMER_ID_USER_START + 8)
 
 #define MSG_ID_NETWORK_REGISTRATION   (MSG_ID_USER_START+0x100)
 
@@ -87,6 +88,8 @@ static char *m_pCurrentPos = NULL;
 * ADC Param
 ******************************************************************/
 static u32 ADC_CustomParam = 0;
+//static Enum_PinName adcPin = PIN_ADC0;
+
 /*****************************************************************
 * Local time param
 ******************************************************************/
@@ -163,7 +166,8 @@ static void time_callback_onTimer(u32 timerId, void* param);
 /*****************************************************************
 * ADC callback function
 ******************************************************************/
-static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam);
+//static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam);
+static void Callback_OnADCTimer_handler(u32 timerId, void* param);
 
 /*****************************************************************
 * GPRS and socket callback function
@@ -301,7 +305,7 @@ void proc_subtask1(s32 TaskId)
     InitUART();
     InitGPIO();
     InitADC();
-    InitSN();
+    //InitSN();
 
     APP_DEBUG("<-- subtask1: enter, subTaskId1=%d ->\r\n", programmData.subTaskId1);
 
@@ -315,6 +319,7 @@ void proc_subtask1(s32 TaskId)
 				if(programmData.timeInit == FALSE)
 				{
 					programmData.timeInit = TRUE;
+					InitSN();
 					InitTIME();
 				}
 				break;
@@ -828,25 +833,43 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
 }
 
 
+static void Callback_OnADCTimer_handler(u32 timerId, void* customParam)
+{
+	u32 adcValue = 0;
+	Ql_ADC_Read(PIN_ADC0, &adcValue);
+	programmData.dataState.temp = GetTempValue(adcValue);
+	u32 capacity, voltage;
+	s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
+	//APP_DEBUG( "<-- end RIL_GetPowerSupply ret=%d -->\r\n", ret);
+	if(ret == QL_RET_OK)
+	{
+		//programmData.dataState.temp = GetTempValue(adcValue);
+		programmData.dataState.voltage = voltage;
+		APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.dataState.temp);
+	}
+}
+/*
 static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *customParam)
 {
+	//APP_DEBUG( "<-- start Callback_OnADCSampling adcValue=%d -->\r\n", adcValue);
 	u32 index = *((u32*)customParam);
 	if(index % 60 == 0)
 	{
-		//APP_DEBUG( "<-- start RIL_GetPowerSupply -->");
+		//u32 value = 0;
+		//Ql_ADC_Read(PIN_ADC0, &value);
 		programmData.dataState.temp = GetTempValue(adcValue);
 		u32 capacity, voltage;
 		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
-		//APP_DEBUG( "<-- end RIL_GetPowerSupply ret=%d -->", ret);
+		APP_DEBUG( "<-- end RIL_GetPowerSupply ret=%d -->", ret);
 		if(ret == QL_RET_OK)
 		{
-			programmData.dataState.temp = GetTempValue(adcValue);
+			//programmData.dataState.temp = GetTempValue(adcValue);
 			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.dataState.temp);
 		}
 	}
-
     *((s32*)customParam) += 1;
 }
+*/
 
 static void wdt_callback_onTimer(u32 timerId, void* param)
 {
@@ -1157,37 +1180,41 @@ static void InitGPIO(void)
 
 static void InitADC(void)
 {
-    Enum_PinName adcPin = PIN_ADC0;
+    //Enum_PinName adcPin = PIN_ADC0;
     // Register callback foR ADC
-    APP_DEBUG("<-- Register callback for ADC -->\r\n")
+    APP_DEBUG("<-- InitADC start -->\r\n")
+
+
+    /*//not work
     Ql_ADC_Register(adcPin, Callback_OnADCSampling, (void *)&ADC_CustomParam);
-
     // Initialize ADC (sampling count, sampling interval)
-    APP_DEBUG("<-- Initialize ADC (sampling count=5, sampling interval=200ms) -->\r\n")
-    Ql_ADC_Init(adcPin, 5, 200);
-
+    APP_DEBUG("<-- Initialize ADC (sampling count=10, sampling interval=100ms) -->\r\n")
+    Ql_ADC_Init(adcPin, 20, 100);
     // Start ADC sampling
     APP_DEBUG("<-- Start ADC sampling -->\r\n")
     Ql_ADC_Sampling(adcPin, TRUE);
+    */
+    //work
+    Ql_Timer_Register(ADC_TIMER_ID, Callback_OnADCTimer_handler, &ADC_CustomParam /*&adcPin*/);
+    Ql_Timer_Start(ADC_TIMER_ID, 60*1000, TRUE);
 
-    // Stop  sampling ADC
-    //Ql_ADC_Sampling(adcPin, FALSE);
+    APP_DEBUG("<-- InitADC end -->\r\n")
 }
 
 static void InitTIME(void)
 {
-	APP_DEBUG("<-- InitTIME -->\r\n");
+	APP_DEBUG("<-- InitTIME start -->\r\n");
 
 	u8 status = 0;
 	s32 ret = RIL_GetTimeSynch_Status(&status);
 	if(ret == RIL_AT_SUCCESS)
 	{
 		APP_DEBUG("<-- InitTIME status=%d -->\r\n", status);
-		if(status != 3){
-			status = 3;
+		if(status != 1 || status != 3){
+			status = 1;//was for BC66NADA status=3
 			ret = RIL_SetTimeSynch_Status(status);
 			if(ret == RIL_AT_SUCCESS){
-				programmData.needReboot = TRUE;
+				//programmData.needReboot = TRUE;//for status=3
 			}
 		}
 	}
@@ -1216,6 +1243,19 @@ static void InitSN(void)
     	APP_DEBUG("<-- IMEI:%s, ret=%d -->\r\n", programmData.dataState.imei, ret);
     }
 
+
+
+    u8 tmpbuf[100];
+    Ql_memset(tmpbuf, 0, sizeof(tmpbuf));
+    ret = Ql_GetSDKVer((u8*)tmpbuf, sizeof(tmpbuf));
+    if(ret > 0)
+    {
+        APP_DEBUG("<-- SDK Version:%s. -->\r\n", tmpbuf);
+    }else
+    {
+        APP_DEBUG("<-- Get SDK Version Failure. -->\r\n");
+    }
+
     char strCCID[30];
     Ql_memset(strCCID, 0x0, sizeof(strCCID));
     ret = RIL_SIM_GetCCID(strCCID);
@@ -1224,6 +1264,8 @@ static void InitSN(void)
     	Ql_strcpy(programmData.dataState.iccid, strCCID);
     	APP_DEBUG("<-- ICCID:%s, ret=%d -->\r\n", programmData.dataState.iccid, ret);
     }
+
+
 
     APP_DEBUG("<-- InitSN end -->\r\n");
 }
@@ -1328,17 +1370,20 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 		else
 		{
 			char *s = Ql_strstr(pData, "AT+");
+			char *s1 = Ql_strstr(pData, "ATI");
+			char *s2 = Ql_strstr(pData, "ATE");
+			char *s3 = Ql_strstr(pData, "AT&W");
 			//APP_DEBUG("<--Ql_strstr s=[%d] pData=[%d]-->\r\n", (long)s, (long)pData);
-			if(s != NULL && s == pData)
+			if( (s != NULL && s == pData) || (s1 != NULL && s1 == pData) || (s2 != NULL && s2 == pData) || (s3 != NULL && s3 == pData)   )
 			{
 				s32 aret = RIL_NW_SendATCmd(pData, tmp_buff);
 				if(aret == RIL_AT_SUCCESS){
-					APP_DEBUG("OK\r\n");
+					//APP_DEBUG("OK\r\n");
 				}
 				else{
-					APP_DEBUG("ERROR\r\n");
+					//APP_DEBUG("ERROR\r\n");
 				}
-				APP_DEBUG("%s", tmp_buff);
+				//APP_DEBUG("%s", tmp_buff);
 				return;
 			}
 

@@ -48,7 +48,7 @@
 #define RIL_DFOTA_DEBUG_ENABLE 1
 #if RIL_DFOTA_DEBUG_ENABLE > 0
 #define RIL_DFOTA_DEBUG_PORT  UART_PORT0
-static char DBG_Buffer[1024];
+static char dfota_DBG_Buffer[512];
 #define RIL_DFOTA_DEBUG(BUF,...)  QL_TRACE_LOG(RIL_DFOTA_DEBUG_PORT,BUF,1024,__VA_ARGS__)
 #else
 #define RIL_DFOTA_DEBUG(BUF,...) 
@@ -65,11 +65,11 @@ s32 RIL_DFOTA_Upgrade(char* url)
     Ql_sprintf(strAT,"AT+QFOTADL=\"%s\"\n",url);
    
     ret = Ql_RIL_SendATCmd(strAT,Ql_strlen(strAT), NULL,NULL,0);
-    RIL_DFOTA_DEBUG(DBG_Buffer,"<-- Send AT:%s,ret=(%d) -->\r\n",strAT,ret);
+    RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- Send AT:%s,ret=(%d) -->\r\n",strAT,ret);
    
     if(RIL_AT_SUCCESS != ret)
     {
-	  RIL_DFOTA_DEBUG(DBG_Buffer,"<-- Dfota failed  -->\r\n",strAT,ret);
+	  RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- Dfota failed  -->\r\n",strAT,ret);
     }
     return ret;
 }
@@ -130,25 +130,25 @@ void Dfota_Upgrade_States(Dfota_Upgrade_State state, s32 errno)
     switch(state)
     {
         case DFOTA_START:
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<-- DFota start-->\r\n");
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- DFota start-->\r\n");
             break;
         case DFOTA_DOWNLOADING:
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<-- DFota downloading  file.-->\r\n");
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- DFota downloading  file.-->\r\n");
             break; 
         case DFOTA_DOWNLOAD_END:
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<-- DFota downloading  file finish.-->\r\n");
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- DFota downloading  file finish.-->\r\n");
             break; 
         case DFOTA_DOWNLOAD_FAILED:
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<-- DFota download file failed(%d).-->\r\n", errno);
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- DFota download file failed(%d).-->\r\n", errno);
             break;     
         case DFOTA_UPGRADE_START:
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<-- DFota upgrade start.-->\r\n");
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<-- DFota upgrade start.-->\r\n");
             break;    
         case DFOTA_FINISH:  
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<--DFota Finish.-->\r\n");
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<--DFota Finish.-->\r\n");
              break;
         case DFOTA_FAILED:  
-             RIL_DFOTA_DEBUG(DBG_Buffer,"<--DFota failed(%d)!!-->\r\n",errno);
+             RIL_DFOTA_DEBUG(dfota_DBG_Buffer,"<--DFota failed(%d)!!-->\r\n",errno);
              break;
         default:
             break;

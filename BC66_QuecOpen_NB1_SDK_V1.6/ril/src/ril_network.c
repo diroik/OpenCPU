@@ -265,10 +265,10 @@ static s32 ATResponse_QENG_Handler(char* line, u32 len, void* param)
 
 static s32 ATResponse_Handler(char* line, u32 len, void* userData)
 {
-    /*
+
 	if(line){
-		APP_DEBUG("ATResponse_Handler head=<%s>\r\n", line);
-	}*/
+		APP_DEBUG("%s", line);
+	}
 
     if (Ql_RIL_FindLine(line, len, "OK"))
     {  
@@ -310,6 +310,7 @@ s32 RIL_NW_SendATCmd(char* strAT, char *outValue)
     //{
     //    return RIL_AT_INVALID_PARAM;
     //}
+	//Ql_memset(outValue, 0x0, sizeof(tmp_buff));
     retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, outValue, 0);
     //if(RIL_AT_SUCCESS == retRes){}
     return retRes;

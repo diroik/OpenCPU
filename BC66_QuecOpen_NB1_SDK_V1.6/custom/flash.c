@@ -74,7 +74,7 @@ static sProgrammSettings firstInitSettings =
     .securitySettings.cmdPassw = "12345678",
 
     .ftpSettings.srvAddress = "94.228.255.152",
-    .ftpSettings.srvPort = 21,
+    .ftpSettings.srvPort = 8080,
     .ftpSettings.filePath = "/BC66/",
     .ftpSettings.fileName = "APPGS3MDM32.bin",
     .ftpSettings.usrName = "firmware",

@@ -52,7 +52,7 @@ static s32 ATResponse_Handler(char* line, u32 len, void* userData)
 static s32 ATResponse_CTZU_Status_Handler(char* line, u32 len, void* userData)
 {
 	char *head = Ql_RIL_FindString(line, len, "+CTZU:"); //continue wait
-	APP_DEBUG("[ATResponse_CTZU_Status_Handler] line=<%s>\r\n", (u8*)line);
+	//APP_DEBUG("[ATResponse_CTZU_Status_Handler] line=<%s>\r\n", (u8*)line);
 
     if(head)
     {
