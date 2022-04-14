@@ -11,7 +11,7 @@ static sProgrammSettings firstInitSettings =
 {
     .crc        = 0xAA,
     .tmp1       = 0xFF,
-    .tmp2       = 0xFF,
+    .tryConnectCnt = 5,
 
     .adcSettings.samplingCount = 5,
     .adcSettings.samplingInterval = 200,
@@ -77,7 +77,7 @@ bool restore_default_flash(sProgrammSettings *sett_in_ram)
 
 	*sett_in_ram = firstInitSettings;//*tmp;
 	sett_in_ram->tmp1 = 0xAA;
-	sett_in_ram->tmp2 = 0xAA;
+	//sett_in_ram->tmp2 = 0xAA;
 	//sett_in_ram->crc = calc_settings_crc(sett_in_ram); //in write_to_flash_settings
 
 	ret = write_to_flash_settings(sett_in_ram);
@@ -100,9 +100,9 @@ bool init_flash(sProgrammSettings *sett_in_ram)
 
   if(r >= 0 )
   {
-	  if(r == 0 || r != len || tmp.tmp1 != 0xAA || tmp.tmp2 != 0xAA)
+	  if(r == 0 || r != len || tmp.tmp1 != 0xAA)
 	  {//first init
-		  Ql_Debug_Trace("<--first_init tmp1=%d tmp2=%d-->\r\n", tmp.tmp1, tmp.tmp2);
+		  Ql_Debug_Trace("<--first_init tmp1=%d-->\r\n", tmp.tmp1);
 
 		  ret = restore_default_flash(sett_in_ram);
 	  }

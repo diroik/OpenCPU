@@ -36,10 +36,12 @@
 #include "flash.h"
 #include "infrastructure.h"
 
+#define SAME_BUFFER_LEN 1400
+
 /*****************************************************************
 * UART Param
 ******************************************************************/
-#define SERIAL_RX_BUFFER_LEN  2048
+#define SERIAL_RX_BUFFER_LEN  SAME_BUFFER_LEN
 static u8 m_RxBuf_Uart[SERIAL_RX_BUFFER_LEN];
 
 /*****************************************************************
@@ -61,7 +63,7 @@ static u8 m_RxBuf_Uart[SERIAL_RX_BUFFER_LEN];
 #define TCP_TIMER_PERIOD     800 //800/500
 #define TIMEOUT_90S_PERIOD   90000
 #define CSQ_TIMER_PERIOD     180000
-#define GPIO_INPUT_TIMER_PERIOD 100
+#define GPIO_INPUT_TIMER_PERIOD 10
 
 static s32 timeout_90S_monitor = FALSE;
 
@@ -73,8 +75,8 @@ static ST_GprsConfig  m_gprsCfg;
 /*****************************************************************
 * Server Param
 ******************************************************************/
-#define SEND_BUFFER_LEN     1400
-#define RECV_BUFFER_LEN     1400
+#define SEND_BUFFER_LEN     SAME_BUFFER_LEN
+#define RECV_BUFFER_LEN     SAME_BUFFER_LEN
 
 static u8 m_send_buf[SEND_BUFFER_LEN];
 static u8 m_recv_buf[RECV_BUFFER_LEN];
@@ -85,6 +87,9 @@ static s32 m_socketid = -1;
 
 static s32 m_remain_len = 0;     // record the remaining number of bytes in send buffer.
 static char *m_pCurrentPos = NULL;
+
+#define TEMP_BUFFER_LEN 512
+
 
 /*****************************************************************
 * ADC Param
@@ -115,6 +120,7 @@ static sProgrammData programmData =
 
     .rebootCnt 		= 0,
     .reconnectCnt 	= 0,
+    .tryconnectCnt 	= 0,
     .durationCnt    = 0,//!!!
     .pingCnt		= 0,
     .buttonCnt 		= 0,
@@ -128,7 +134,7 @@ static sProgrammData programmData =
     .Hin2State		= FALSE,
 
     .autCnt			= 0,
-
+    .ledCnt			= 0,
 
     .dataState.totalSeconds 	= 0,
     .dataState.button	= FALSE,
@@ -235,7 +241,7 @@ void proc_main_task(s32 TaskId)
     Ql_UART_Open(UART_PORT1, 115200, FC_NONE);
     Ql_UART_Open(UART_PORT2, 115200, FC_NONE);
 
-    APP_DEBUG("<--OpenCPU: Starting Application. MainTaskId=%d -->\r\n",  programmData.mainTaskId);
+    APP_DEBUG("<-- OpenCPU: Starting Application. MainTaskId=%d -->\r\n",  programmData.mainTaskId);
 
     InitWDT(&wtdid);
     InitGPRS();
@@ -353,7 +359,8 @@ void proc_main_task(s32 TaskId)
                 }
 
             default:
-                APP_DEBUG("<-- Other URC: type=%d\r\n", msg.param1);
+            	APP_DEBUG("<--MSG_ID_URC_INDICATION,  msg.param1=<%u>, msg.param2=<%u>-->\r\n", msg.param1, msg.param2);
+                //APP_DEBUG("<-- Other URC: type=%d\r\n", msg.param1);
                 break;
             };
             break;
@@ -385,7 +392,7 @@ void proc_subtask1(s32 TaskId)
     InitUART();
     InitGPIO();
     InitADC();
-    InitSN();
+    //InitSN();
 
     APP_DEBUG("<-- subtask1: enter, subTaskId1=%d ->\r\n", programmData.subTaskId1);
 
@@ -399,6 +406,7 @@ void proc_subtask1(s32 TaskId)
 				if(programmData.timeInit == FALSE)
 				{
 					programmData.timeInit = TRUE;
+					InitSN();
 					InitTIME();
 				}
 				break;
@@ -469,9 +477,10 @@ static void Callback_OnADCSampling(Enum_ADCPin adcPin, u32 adcValue, void *custo
 		//APP_DEBUG( "<-- Callback_OnADCSampling: sampling voltage(mV)=%d  times=%d -->\r\n", adcValue, *((s32*)customParam) );
 		u32 capacity, voltage;
 		s32 ret = RIL_GetPowerSupply(&capacity, &voltage);
+		programmData.dataState.temp = GetTempValue(adcValue);
 		if(ret == QL_RET_OK){
-			programmData.dataState.temp = GetTempValue(adcValue);
-			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.dataState.temp);
+			programmData.dataState.voltage = voltage;
+			APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%.2f -->\r\n", voltage, adcValue, programmData.dataState.temp);
 		}
 	}
     *((u32*)customParam) += 1;
@@ -509,6 +518,12 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 			programmData.Hin2State = programmData.dataState.in2;
 			APP_DEBUG("<-- Get the in2_pin GPIO level value changed: %d -->\r\n", programmData.dataState.in2);
 		}
+
+		if(programmData.ledCnt > 0){
+			programmData.ledCnt--;
+			Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
+		}
+
 	}
 	else if (LED_TIMER_ID == timerId)
 	{
@@ -583,6 +598,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	        	programmData.durationCnt  = programmSettings.secondsOfDuration;
 	        	APP_DEBUG("<-- Duration reload = <%lu> -->\r\n", programmData.durationCnt);
 	        }
+	        programmData.tryconnectCnt = 0;
 		}
 	    if(programmData.durationCnt > 0)
 	    {
@@ -603,7 +619,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	    	programmData.pingCnt  = 0;
 	    	if(m_remain_len == 0 && m_pCurrentPos == NULL && m_socketid >= 0)
 	        {
-	        	char tmp_buff[300] = {0};
+	        	char tmp_buff[TEMP_BUFFER_LEN] = {0};
 	        	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
 	        	//if(programmSettings.ipSettings.mode)
@@ -666,36 +682,40 @@ void callback_socket_connect(s32 socketId, s32 errCode, void* customParam )
            timeout_90S_monitor = FALSE;
         }
 
-        APP_DEBUG("<--Callback: socket connect successfully.-->\r\n");
-        //////// send init packet
-        programmData.pingCnt  = 0;//reload ping cnt
 
+        programmData.pingCnt  = 5;//reload ping cnt (was 0)
+        if(programmData.tryconnectCnt < programmSettings.tryConnectCnt)//add tryconnectCnt
+        	programmData.tryconnectCnt++;
 
+        APP_DEBUG("<--Callback: socket connect successfully. Try connect=%d-->\r\n", programmData.tryconnectCnt);
+
+        //////// forming send init packet
         programmData.lastPacket.pid = 0;
         programmData.lastPacket.timeStamp = programmData.dataState.totalSeconds;
-
 		m_pCurrentPos = m_send_buf;
 		m_remain_len = 0;
-
-		bShort tmp;
-		tmp.Data_s = Ql_strlen(programmData.dataState.imei) + Ql_strlen(programmData.dataState.iccid) + 1;
-
-		m_pCurrentPos[m_remain_len++] = 0;
-		m_pCurrentPos[m_remain_len++] = 0x0B;
-
-		m_pCurrentPos[m_remain_len++] = tmp.Data_b[1];
-		m_pCurrentPos[m_remain_len++] = tmp.Data_b[0];
-
+		if(programmSettings.ipSettings.mode == 101){
+			m_pCurrentPos[m_remain_len++] = 0;
+			m_pCurrentPos[m_remain_len++] = 0x0B;
+			bShort length;
+			length.Data_s = Ql_strlen(programmData.dataState.imei) + Ql_strlen(programmData.dataState.iccid) + 1;
+			m_pCurrentPos[m_remain_len++] = length.Data_b[1];
+			m_pCurrentPos[m_remain_len++] = length.Data_b[0];
+		}
 		u32 len = Ql_strlen(programmData.dataState.imei);
 		Ql_memcpy((m_pCurrentPos + m_remain_len), programmData.dataState.imei, len);
 		m_remain_len += len;
-
 		*(m_pCurrentPos + m_remain_len) = 0xFF;
 		m_remain_len += 1;
-
 		len = Ql_strlen(programmData.dataState.iccid);
 		Ql_memcpy((m_pCurrentPos + m_remain_len), programmData.dataState.iccid, len);
 		m_remain_len += len;
+		*(m_pCurrentPos + m_remain_len) = 0xFF;
+		m_remain_len += 1;
+		s32 rs =  Ql_sprintf((m_pCurrentPos + m_remain_len), "%s", HW_VERSION);
+		if(rs > 0){
+			m_remain_len += rs;
+		}
 		////////////
         m_tcp_state = STATE_SOC_SEND;
     }
@@ -715,15 +735,18 @@ void callback_socket_close(s32 socketId, s32 errCode, void* customParam )
     if (errCode == SOC_SUCCESS)
     {
         APP_DEBUG("<-- CallBack: close socket successfully. -->\r\n");
-    }else if(errCode == SOC_BEARER_FAIL)
+    }
+    else if(errCode == SOC_BEARER_FAIL)
     {
         m_tcp_state = STATE_GPRS_DEACTIVATE;
-        APP_DEBUG("<-- CallBack: close socket failure, (socketId=%d,error_cause=%d) -->\r\n",socketId,errCode);
-    }else
+        APP_DEBUG("<-- CallBack: close socket failure, (socketId=%d, error_cause=%d) -->\r\n", socketId, errCode);
+    }
+    else
     {
         m_tcp_state = STATE_GPRS_GET_DNSADDRESS;
-        APP_DEBUG("<-- CallBack: close socket failure, (socketId=%d,error_cause=%d) -->\r\n",socketId,errCode);
+        APP_DEBUG("<-- CallBack: close socket failure, (socketId=%d, error_cause=%d) -->\r\n", socketId, errCode);
     }
+    m_socketid = -1;
 }
 
 void callback_socket_accept(s32 listenSocketId, s32 errCode, void* customParam )
@@ -771,7 +794,9 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
         }
         else if(ret <= RECV_BUFFER_LEN)
         {
-        	char tmp_buff[300] = {0};
+        	programmData.ledCnt = ret;//blink
+
+        	char tmp_buff[TEMP_BUFFER_LEN] = {0};
         	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
             APP_DEBUG("<-- Receive data from sock(%d), len(%d) -->\r\n", socketId, ret);
@@ -1112,7 +1137,7 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                     }
                     else
                     {
-                        APP_DEBUG("<--Get ip by hostname failure:ret=%d-->\r\n",ret);
+                        APP_DEBUG("<--Get ip by hostname failure:ret=%d-->\r\n", ret);
                         if(ret == SOC_BEARER_FAIL)
                         {
                              m_tcp_state = STATE_GPRS_DEACTIVATE;
@@ -1128,6 +1153,18 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             case STATE_SOC_REGISTER:
             {
             	if(programmData.durationCnt == 0) break;
+            	if(programmData.tryconnectCnt >= programmSettings.tryConnectCnt){
+            		programmData.durationCnt = 0;
+            		APP_DEBUG("<--The max number of connection attempts has been exceeded! tryconnectCnt=%d-->\r\n", programmData.tryconnectCnt);
+            		programmData.tryconnectCnt = 0;//na vsiakiy pojarniy
+    	  	        if(m_socketid >= 0){
+    	  				m_tcp_state = STATE_SOC_CLOSE;
+    	  	        }
+    	  	        else{
+    	  	        	m_tcp_state = STATE_NW_GET_SIMSTATE;
+    	  	        }
+            		break;
+            	}
 
                 ret = Ql_SOC_Register(callback_soc_func, NULL);
                 if (SOC_SUCCESS == ret)
@@ -1219,8 +1256,8 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                 m_tcp_state = STATE_SOC_SENDING;
                 do
                 {
+                	APP_DEBUG("<-- Sending data, socketid=%d, number of bytes sent=%d -->\r\n", m_socketid, m_remain_len);
                     ret = Ql_SOC_Send(m_socketid, m_pCurrentPos, m_remain_len);
-                    APP_DEBUG("<-- Send data, socketid=%d, number of bytes sent=%d -->\r\n", m_socketid, ret);
                     if(ret == m_remain_len)//send compelete
                     {
                         m_remain_len = 0;
@@ -1231,12 +1268,13 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                     }
                     else if((ret <= 0) && (ret == SOC_WOULDBLOCK))
                     {
+                    	APP_DEBUG("<-- waiting CallBack_socket_write, then send data, ret=%d.-->\r\n", ret);
                         //waiting CallBack_socket_write, then send data;
                         break;
                     }
                     else if(ret <= 0)
                     {
-                        APP_DEBUG("<--Send data failure,ret=%d.-->\r\n",ret);
+                        APP_DEBUG("<--Send data failure, ret=%d.-->\r\n", ret);
                         APP_DEBUG("<-- Close socket.-->\r\n");
                         Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
                         m_socketid = -1;
@@ -1298,11 +1336,25 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             {
             	if(m_socketid >= 0)
             	{
-            		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
-            		APP_DEBUG("<--socket closed, ret(%d)-->\r\n", ret);
-            		if(ret < 0){
+            		s16 rcnt = 3;
+            		do
+            		{
+                		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
+                		APP_DEBUG("<--socket <%d> closed, ret(%d)-->\r\n", m_socketid, ret);
+                		if(ret >= 0)
+                			break;
+            		}
+            		while(rcnt-- > 0);
+            		if(rcnt <= 0){
             			programmData.needReboot = TRUE;
             		}
+
+            				/*;
+            		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
+            		APP_DEBUG("<--socket <%d> closed, ret(%d)-->\r\n", m_socketid, ret);
+            		if(ret < 0){
+            			programmData.needReboot = TRUE;
+            		}*/
             	}
 		        m_socketid = -1;
                 m_remain_len = 0;
@@ -1479,18 +1531,18 @@ static void InitADC(void)
 
 static void InitTIME(void)
 {
-	APP_DEBUG("<-- InitTIME -->\r\n");
+	APP_DEBUG("<-- InitTIME start -->\r\n");
 
 	u8 status = 0;
 	s32 ret = RIL_GetTimeSynch_Status(&status);
 	if(ret == RIL_AT_SUCCESS)
 	{
 		APP_DEBUG("<-- InitTIME status=%d -->\r\n", status);
-		if(status != 3){
-			status = 3;
+		if(status != 1){
+			status = 1;
 			ret = RIL_SetTimeSynch_Status(status);
 			if(ret == RIL_AT_SUCCESS){
-				programmData.needReboot = TRUE;
+				//programmData.needReboot = TRUE;
 			}
 		}
 	}
@@ -1542,11 +1594,11 @@ static bool GetLocalTime(void)
     {
         //This function get total seconds elapsed   since 1970.01.01 00:00:00.
         u32 ts = Ql_Mktime(&time);
-        APP_DEBUG("<--Local time successfuly determined: %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
+        APP_DEBUG("<-- Time successfuly determined (UTC): %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
 
         if(ts > 0){
-        	programmData.dataState.totalSeconds = ts;
         	programmData.dataState.timezone = time.timezone/4;
+        	programmData.dataState.totalSeconds = ts + (programmData.dataState.timezone*60*60);
         }
         APP_DEBUG("<--totalSeconds=<%lu>-->\r\n", programmData.dataState.totalSeconds);
         ret = TRUE;
@@ -1560,13 +1612,15 @@ static bool GetLocalTime(void)
 
 static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 {
-	APP_DEBUG("<-- Read data from port=%d, len=%d -->\r\n", port, len);
+	APP_DEBUG("<-- Read data from serial port=%d, len=%d -->\r\n", port, len);
 	pData[len] = 0;
-	char tmp_buff[300] = {0};
+	char tmp_buff[TEMP_BUFFER_LEN] = {0};
 	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
 	if(port == UART_PORT3)//485
 	{
+		programmData.ledCnt = len;//blink
+
 		//send it to server
 		m_pCurrentPos = m_send_buf;
 		if(programmSettings.ipSettings.mode == 101)
@@ -1578,6 +1632,7 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 		Ql_memcpy(m_pCurrentPos + m_remain_len, pData, len);//!!!
 		m_remain_len += len;
 		/////////////////////////////////////
+		/*
 		if(len < sizeof(tmp_buff) - 50)
 		{
 			Ql_sprintf(tmp_buff ,"HEX STRING from port=[");
@@ -1588,8 +1643,9 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 			}
 			//Ql_strcat(tmp_buff, "]\r\n");
 			APP_DEBUG("%s]\r\n", tmp_buff);
-		}
+		}*/
 	    /////////////////////////////////////
+		APP_DEBUG("<-- Need send by socket, remain_len=%d -->\r\n", m_remain_len);
 	}
 	else
 	{
@@ -1602,17 +1658,20 @@ static void proc_handle(Enum_SerialPort port, char *pData, s32 len)
 		else
 		{
 			char *s = Ql_strstr(pData, "AT+");
+			char *s1 = Ql_strstr(pData, "ATI");
+			char *s2 = Ql_strstr(pData, "ATE");
+			char *s3 = Ql_strstr(pData, "AT&W");
 			//APP_DEBUG("<--Ql_strstr s=[%d] pData=[%d]-->\r\n", (long)s, (long)pData);
-			if(s != NULL && s == pData)
+			if( (s != NULL && s == pData) || (s1 != NULL && s1 == pData) || (s2 != NULL && s2 == pData) || (s3 != NULL && s3 == pData)   )
 			{
 				s32 aret = RIL_NW_SendATCmd(pData, tmp_buff);
 				if(aret == RIL_AT_SUCCESS){
-					APP_DEBUG("OK\r\n");
+					//APP_DEBUG("OK\r\n");
 				}
 				else{
-					APP_DEBUG("ERROR\r\n");
+					//APP_DEBUG("ERROR\r\n");
 				}
-				APP_DEBUG("%s", tmp_buff);
+				//APP_DEBUG("%s", tmp_buff);
 				return;
 			}
 

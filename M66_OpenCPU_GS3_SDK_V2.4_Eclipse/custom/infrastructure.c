@@ -148,7 +148,8 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			return ret;
 		}
 
-		if(programmData->autCnt == 0)
+
+		if(programmData->autCnt == 0)//не авторизировано
 		{//
 			char *cmdstart = "cmd set ";
 			if(Ql_strstr(src_str, "cmd set authorization=") != 0)
@@ -160,7 +161,20 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			return ret;
 		}
 
-		if(Ql_strcmp(src_str, "cmd reboot") == 0)
+		if(Ql_strstr(src_str, "cmd set authorization=") != 0)
+		{
+  	      Ql_strcpy(tmp_buff, "\r\n");
+  	      Ql_strcat(tmp_buff, "already authorization!");
+  	      Ql_strcat(tmp_buff, "\r\n");
+  	      ret = tmp_buff;
+		}
+		else if(Ql_strstr(src_str, "cmd ping ") != 0)
+		{
+			s32 len = Ql_strlen(src_str) - 	Ql_strlen("cmd ping ");
+			if(len > 0)
+				ret = ping_cmd(&src_str[Ql_strlen("cmd ping ")], tmp_buff);
+		}
+		else if(Ql_strcmp(src_str, "cmd reboot") == 0)
 		{
 			reboot(programmData);
 			Ql_strcpy(tmp_buff, "\r\nrebooting\r\n");
@@ -168,7 +182,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 		}
 		else if(Ql_strcmp(src_str, "cmd reconnect") == 0)
 		{
-			programmData->reconnectCnt = sett_in_ram->secondsToReconnect;
+			programmData->reconnectCnt = 0;//sett_in_ram->secondsToReconnect;
 			Ql_strcpy(tmp_buff, "\r\nreconnecting\r\n");
 			ret = tmp_buff;
 		}
@@ -243,6 +257,31 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 
 	}
 	return ret;
+}
+
+
+//**************************************************
+char *ping_cmd(char *cmdstr, char *tmp_buff)
+{
+	  char *ret = NULL;
+	  bool r = FALSE;
+
+	  APP_DEBUG("<-- ping_cmd address=<%s> -->\r\n", cmdstr);
+	  r = Ql_NW_Ping(cmdstr);
+
+	  if(r == TRUE){
+	      Ql_strcpy(tmp_buff, "\r\n");
+	      Ql_strcat(tmp_buff, "ping OK");
+	      Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+	  }
+	  else{
+	      Ql_strcpy(tmp_buff, "\r\n");
+	      Ql_strcat(tmp_buff, "ping ERROR");
+	      Ql_strcat(tmp_buff, "\r\n");
+	      ret = tmp_buff;
+	  }
+	  return ret;
 }
 //**************************************************
 char *get_aut_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgrammData *programmData)
@@ -511,6 +550,15 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "tryconnect") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value >= 1 && value <= 255){
+    			  sett_in_ram->tryConnectCnt = value;
+    			  r = TRUE;
+    		  }
+    	  }
+
     	  else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
@@ -519,11 +567,43 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
+     	  else if(Ql_strcmp(cmd, "sampling count") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);//
+    		  if(value >= 1){ //
+    			  sett_in_ram->adcSettings.samplingCount = value;
+    			  r = TRUE;
+    		  }
+    	  }
+     	  else if(Ql_strcmp(cmd, "sampling interval") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);//
+    		  if(value >= 200){ // min=200ms
+    			  sett_in_ram->adcSettings.samplingInterval = value;
+    			  r = TRUE;
+    		  }
+    	  }
     	  else if(Ql_strcmp(cmd, "button timeout") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
     		  if(timeout >= 1){ // 1 s
     			  sett_in_ram->buttonTimeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "input1 timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 0){ // 0 - impulses
+    			  sett_in_ram->in1Timeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "input2 timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 0){ // 0 - impulses
+    			  sett_in_ram->in2Timeout = timeout;
     			  r = TRUE;
     		  }
     	  }
@@ -711,6 +791,16 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
       Ql_strcat(tmp_buff, "\r\n");
       ret = tmp_buff;
     }
+    else if(Ql_strcmp(cmd, "tryconnect") == 0)
+    {
+	  Ql_sprintf(tbuff ,"%d", sett_in_ram->tryConnectCnt);
+      Ql_strcpy(tmp_buff, "\r\n");
+      Ql_strcat(tmp_buff, cmd);
+      Ql_strcat(tmp_buff, "=");
+      Ql_strcat(tmp_buff, tbuff);
+      Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
     else if(Ql_strcmp(cmd, "baudrate") == 0)
     {
 	  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
@@ -787,6 +877,16 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
     else if(Ql_strcmp(cmd, "version") == 0)
     {
     	Ql_sprintf(tbuff ,"%s", FW_VERSION);
+    	Ql_strcpy(tmp_buff, "\r\n");
+      	Ql_strcat(tmp_buff, cmd);
+      	Ql_strcat(tmp_buff, "=");
+      	Ql_strcat(tmp_buff, tbuff);
+      	Ql_strcat(tmp_buff, "\r\n");
+      ret = tmp_buff;
+    }
+    else if(Ql_strcmp(cmd, "devicetype") == 0)
+    {
+    	Ql_sprintf(tbuff ,"%s", HW_VERSION);
     	Ql_strcpy(tmp_buff, "\r\n");
       	Ql_strcat(tmp_buff, cmd);
       	Ql_strcat(tmp_buff, "=");
@@ -1135,17 +1235,20 @@ void Hdlr_RecvNewSMS(u32 nIndex, bool bAutoReply, sProgrammSettings *sett_in_ram
     {
         if (!Ql_strstr(aPhNum, "10086"))  // Not reply SMS from operator
         {
-        	char tmp_buff[150] = {0};
+        	char tmp_buff[150] = {0};//was 150
+        	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
+
         	char *data = pDeliverTextInfo->data;
         	char *answer = Parse_Command(data, tmp_buff, sett_in_ram,  programmData);
 
-        	if( answer != NULL && Ql_strlen(answer) > 0 )
+        	u32 smslen = Ql_strlen(answer);
+        	if( answer != NULL && smslen > 0 )
         	{
-				APP_DEBUG("<-- Replying SMS... -->\r\n");
-				iResult = RIL_SMS_SendSMS_Text(aPhNum, Ql_strlen(aPhNum), LIB_SMS_CHARSET_GSM, (u8*)answer, Ql_strlen(answer),&uMsgRef);
+				APP_DEBUG("<-- Replying SMS, mess len=<%d>.-->\r\n", smslen);
+				iResult = RIL_SMS_SendSMS_Text(aPhNum, Ql_strlen(aPhNum), LIB_SMS_CHARSET_GSM, (u8*)answer, smslen, &uMsgRef);
 				if (iResult != RIL_AT_SUCCESS)
 				{
-					APP_DEBUG("RIL_SMS_SendSMS_Text FAIL! iResult:%u\r\n",iResult);
+					APP_DEBUG("RIL_SMS_SendSMS_Text FAIL! iResult:%u\r\n", iResult);
 					return;
 				}
 				APP_DEBUG("<-- RIL_SMS_SendTextSMS OK. uMsgRef:%d -->\r\n", uMsgRef);

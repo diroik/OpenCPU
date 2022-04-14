@@ -251,4 +251,7 @@ s32  RIL_NW_ClosePDPContext(void);
 ******************************************************************************/
 s32  RIL_NW_GetOperator(char* operator);
 
+
+s32  Ql_NW_Ping(char* addr);
+
 #endif // __RIL_NETWORK_H__

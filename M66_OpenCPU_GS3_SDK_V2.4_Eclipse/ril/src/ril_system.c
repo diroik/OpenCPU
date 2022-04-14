@@ -394,6 +394,9 @@ s32 RIL_GetIMEI(char* imei)
     return Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATRsp_IMEI_Handler,(void*)imei, 0);
 }
 
+
+
+
 bool QSDK_Get_Str(char *src_string,  char *dest_string, unsigned char index)
 {
     u32 SentenceCnt = 0;

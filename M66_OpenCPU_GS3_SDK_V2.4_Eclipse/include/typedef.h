@@ -19,7 +19,7 @@
 
 #if DEBUG_ENABLE > 0
 #define DEBUG_PORT  UART_PORT1
-#define DBG_BUF_LEN   512
+#define DBG_BUF_LEN   1400
 static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define APP_DEBUG(FORMAT,...) {\
@@ -49,7 +49,8 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define RESISTOR 1000.0
 #define AUT_TIMEOUT 300
-#define FW_VERSION "1.31"
+#define FW_VERSION "1.35"
+#define HW_VERSION "GSM-M01"
 
 typedef enum{
     STATE_NW_GET_SIMSTATE,
@@ -101,10 +102,10 @@ typedef struct{
 } sTinyBuffer;
 
 typedef struct{
-	u16 samplingCount;
+	u16  samplingCount;
 	u16 samplingInterval;
-
 }sAdcSettings;
+
 
 typedef struct{
     char gprsApn[MAX_GPRS_APN_LEN];
@@ -162,8 +163,8 @@ typedef struct{
 
 typedef struct{
     u16    crc;
-    u8     tmp1;
-    u8     tmp2; //tmp for aligned to 4 bytes
+    u8     tmp1;//tmp for aligned to 4 bytes
+    u8     tryConnectCnt;
     sAdcSettings		adcSettings;
     sGsmSettings        gsmSettings;
     sIpSettings         ipSettings;
@@ -204,9 +205,12 @@ typedef struct{
     bool 			Hin2State;
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	tryconnectCnt;
     u32            	durationCnt;
     u32            	pingCnt;
     u32 			autCnt;
+    s32 			ledCnt;
+
     sDataJsonParams dataState;
     sPidPacket      lastPacket;
 }sProgrammData;

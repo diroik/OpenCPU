@@ -49,7 +49,7 @@
 
 typedef enum{
     UP_FOTAINITFAIL, // Fota init failed.
-    UP_START,//Fota upgrade start£¬
+    UP_START,//Fota upgrade start
     UP_URLDECODEFAIL,
     UP_CONNECTING,// connect to the server
     UP_CONNECTED,// connect ok

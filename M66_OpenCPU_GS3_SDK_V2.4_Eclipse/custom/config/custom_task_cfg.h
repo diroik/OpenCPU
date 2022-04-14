@@ -99,7 +99,7 @@ TASK_ITEM(proc_subtask1,  subtask1_id, 10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
 #ifdef __GSM_TEMINAL__
-TASK_ITEM(proc_subtask1,  subtask1_id, 10*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
+TASK_ITEM(proc_subtask1,  subtask1_id, 5*1024, DEFAULT_VALUE1, DEFAULT_VALUE2)
 #endif
 
 /**
