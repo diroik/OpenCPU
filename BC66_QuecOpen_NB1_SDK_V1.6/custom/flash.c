@@ -67,9 +67,15 @@ static sProgrammSettings firstInitSettings =
     //.gsmPortDataTimeout = 500,//
     .secondsOfDuration = 300,
 
-    .buttonTimeout = 10,
+    .buttonTimeout = 30,
+
     .in1Timeout	   = 3,
+    .counter1.ImpulseCnt = 0,
+    .counter1.Koeff = 1000,
+
     .in2Timeout	   = 3,
+    .counter2.ImpulseCnt = 0,
+    .counter2.Koeff = 1000,
 
     .securitySettings.cmdPassw = "12345678",
 

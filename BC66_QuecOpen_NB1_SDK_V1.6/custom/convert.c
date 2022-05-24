@@ -444,9 +444,11 @@ s32 toJSON(char *dst, sDataJsonParams *src)
     len += Ql_sprintf((char*)(dst+len), "{\"imei\":\"%s\"", src->imei);
     len += Ql_sprintf((char*)(dst+len), ",\"iccid\":\"%s\"", src->iccid);
     len += Ql_sprintf((char*)(dst+len), ",\"totalSeconds\":%lu", src->totalSeconds);
-    len += Ql_sprintf((char*)(dst+len), ",\"timezone\":%lu", src->timezone);
+    len += Ql_sprintf((char*)(dst+len), ",\"timezone\":%d", src->timezone);
     len += Ql_sprintf((char*)(dst+len), ",\"in1\":%d", src->in1);
     len += Ql_sprintf((char*)(dst+len), ",\"in2\":%d", src->in2);
+    len += Ql_sprintf((char*)(dst+len), ",\"counter1\":%l", src->in1Cnt);
+    len += Ql_sprintf((char*)(dst+len), ",\"counter2\":%l", src->in2Cnt);
     len += Ql_sprintf((char*)(dst+len), ",\"rssi\":%d", src->rssi);
     len += Ql_sprintf((char*)(dst+len), ",\"ber\":%d", src->ber);
     len += Ql_sprintf((char*)(dst+len), ",\"temp\":%.2f", src->temp);

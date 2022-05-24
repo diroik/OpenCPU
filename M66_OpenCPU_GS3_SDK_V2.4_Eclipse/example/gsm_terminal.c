@@ -58,7 +58,7 @@ static u8 m_RxBuf_Uart[SERIAL_RX_BUFFER_LEN];
 #define MSG_ID_NETWORK_REGISTRATION   (MSG_ID_USER_START+0x100)
 
 
-#define WTD_TMR_TIMEOUT 1500
+#define WTD_TMR_TIMEOUT 1000
 
 #define TCP_TIMER_PERIOD     800 //800/500
 #define TIMEOUT_90S_PERIOD   90000
@@ -150,6 +150,7 @@ static sProgrammData programmData =
 static sProgrammSettings programmSettings;
 
 static s32 				led_cnt = 5;
+static Enum_PinName  	wdt_pin 	= PINNAME_RI;
 static Enum_PinName  	led_pin 	= PINNAME_PCM_CLK;//30
 static Enum_PinName  	button_pin 	= PINNAME_PCM_SYNC;//31
 static Enum_PinName  	in1_pin 	= PINNAME_PCM_OUT;//33
@@ -427,8 +428,11 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
 
     if(programmData.needReboot == FALSE)
     {
-    	Ql_WTD_Feed(*wtdid);
-        //APP_DEBUG("<-- time to feed logic watchdog wtdId=%d -->\r\n",*wtdid);
+    	//feed logic wdt
+    	Ql_WTD_Feed(*wtdid);//APP_DEBUG("<-- time to feed logic watchdog wtdId=%d -->\r\n",*wtdid);
+
+    	//feed HW wdt
+    	Ql_GPIO_SetLevel(wdt_pin, Ql_GPIO_GetLevel(wdt_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
     }
     else
     {
@@ -681,9 +685,7 @@ void callback_socket_connect(s32 socketId, s32 errCode, void* customParam )
            Ql_Timer_Stop(TIMEOUT_90S_TIMER_ID);
            timeout_90S_monitor = FALSE;
         }
-
-
-        programmData.pingCnt  = 5;//reload ping cnt (was 0)
+        programmData.pingCnt  = programmSettings.secondsToPing - 5;//reload ping cnt (was 0)
         if(programmData.tryconnectCnt < programmSettings.tryConnectCnt)//add tryconnectCnt
         	programmData.tryconnectCnt++;
 
@@ -1384,24 +1386,27 @@ static void InitWDT(s32 *wtdid)
     s32 ret;
 
     APP_DEBUG("<-- InitWDT -->\r\n");
-    // Initialize external watchdog: specify the GPIO pin (PINNAME_RI) and the overflow time is 600ms.
-    ret = Ql_WTD_Init(0, PINNAME_RI, 600);//дергаем ногой почаще тк время сброса у tps-ки 1600мс
-    if (0 == ret)
-        APP_DEBUG("\r\n<--OpenCPU: watchdog init OK!-->\r\n");
 
+    //Переделал HW WDT на самостоятельное дерганье ногой.
+    // Initialize external watchdog: specify the GPIO pin (PINNAME_RI) and the overflow time is 600ms.
+    //ret = Ql_WTD_Init(0, PINNAME_RI, 300);//дергаем ногой почаще тк время сброса у tps-ки 1600мс/ возможный минимум 200мс
+    //if (0 == ret)
+    //    APP_DEBUG("\r\n<--OpenCPU: watchdog init OK!-->\r\n");
+
+    //init pin
+    Ql_GPIO_Init(wdt_pin, PINDIRECTION_OUT, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
     // Create a logic watchdog, the interval is 1.5 s
     *wtdid = Ql_WTD_Start(WTD_TMR_TIMEOUT);
     APP_DEBUG("<-- InitWDT wtdid=%d-->\r\n", *wtdid);
 
-
     // Register & start a timer to feed the logic watchdog.
-    ret = Ql_Timer_Register(LOGIC_WTD1_TMR_ID, wdt_callback_onTimer, wtdid);
+    ret = Ql_Timer_RegisterFast(LOGIC_WTD1_TMR_ID, wdt_callback_onTimer, wtdid);
     if(ret < 0){
         APP_DEBUG("<--main task: register fail ret=%d-->\r\n", ret);
         return;
     }
-    // The real feeding interval is 1 s
-    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 1000, TRUE);
+    // The real feeding interval is 0.3 s
+    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 300, TRUE);
     if(ret < 0){
         APP_DEBUG("<--main task: start timer fail ret=%d-->\r\n",ret);
         return;

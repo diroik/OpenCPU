@@ -265,7 +265,6 @@ static s32 ATResponse_QENG_Handler(char* line, u32 len, void* param)
 
 static s32 ATResponse_Handler(char* line, u32 len, void* userData)
 {
-
 	if(line){
 		APP_DEBUG("%s", line);
 	}

@@ -45,12 +45,13 @@
 #include "ql_stdlib.h"
 #include "ql_trace.h"
 #include "ql_uart.h"
+//#include "ql_gpio.h"
 
 /***********************************************************************
  * MACRO CONSTANT DEFINITIONS
 ************************************************************************/
 #define DBG_SWITCH  (FALSE)
-#define DBG_PORT    (UART_PORT2)  //NOTE: Only DBG_SWITCH set to TRUE,this macro can be VALID.
+#define DBG_PORT    (UART_PORT1)//(UART_PORT2)  //NOTE: Only DBG_SWITCH set to TRUE,this macro can be VALID.
 #define DBG_BUF_MAX_LEN   (512)
 
 #define SMS_CMD_MAX_LEN   (30)
@@ -1210,8 +1211,11 @@ static s32 SMS_CMD_GeneralHandler(char* pLine, u32 uLen, void* pUserData)
         return RIL_AT_INVALID_PARAM;
     }
 
-    uType = (pParam->uHdlrType);
+	//feed HW wdt !!!!!!!!!!!
+    //DBG_TRACE(sg_aDbgBuf,"Feed HW WDT!");
+	//Ql_GPIO_SetLevel(PINNAME_RI, Ql_GPIO_GetLevel(PINNAME_RI) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);//wdt_pin=PINNAME_RI
 
+    uType = (pParam->uHdlrType);
     switch(uType)
     {
         case HDLR_TYPE_CPMS_READ_CMD:
@@ -1272,7 +1276,6 @@ static s32 SMS_CMD_GeneralHandler(char* pLine, u32 uLen, void* pUserData)
     SMS_HDLR_CHECK_ERROR(pLine,uLen,"SMS_CMD_GeneralHandler");
 
     DBG_TRACE(sg_aDbgBuf,"Enter SMS_CMD_GeneralHandler,SUCCESS. uType:%u",uType);
-
     return RIL_ATRSP_CONTINUE; //continue wait
 }
 

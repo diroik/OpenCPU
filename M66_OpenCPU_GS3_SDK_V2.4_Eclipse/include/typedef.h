@@ -19,7 +19,7 @@
 
 #if DEBUG_ENABLE > 0
 #define DEBUG_PORT  UART_PORT1
-#define DBG_BUF_LEN   1400
+#define DBG_BUF_LEN   1024
 static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define APP_DEBUG(FORMAT,...) {\
@@ -49,7 +49,7 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define RESISTOR 1000.0
 #define AUT_TIMEOUT 300
-#define FW_VERSION "1.35"
+#define FW_VERSION "1.36"
 #define HW_VERSION "GSM-M01"
 
 typedef enum{

@@ -43,9 +43,9 @@ s32 Ql_FOTA_StartUpgrade(u8* url, ST_GprsConfig* apnCfg, Callback_Upgrade_State 
     /*---------------------------------------------------*/
     Ql_memset((void *)(&FotaConfig), 0, sizeof(ST_FotaConfig)); 
     FotaConfig.Q_gpio_pin1 = Ql_WTD_GetWDIPinCfg()->pinWtd1;
-    FotaConfig.Q_feed_interval1 = 100;
+    FotaConfig.Q_feed_interval1 = 200;
     FotaConfig.Q_gpio_pin2 = Ql_WTD_GetWDIPinCfg()->pinWtd2;
-    FotaConfig.Q_feed_interval2 = 100;
+    FotaConfig.Q_feed_interval2 = 200;
 
 
     //APP_DEBUG("<-- start Ql_FOTA_Init -->\r\n");

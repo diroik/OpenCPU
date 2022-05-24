@@ -139,6 +139,10 @@ typedef struct{
 	char				cmdPassw[16];
 }sSecuritySettings;
 
+typedef struct{
+	u32 ImpulseCnt;
+	u16 Koeff;
+}sCounterData;
 
 #ifdef __PROJECT_SMART_BUTTON__
 
@@ -202,7 +206,7 @@ typedef struct{
 
 #else
 
-#define FW_VERSION "1.31"
+#define FW_VERSION "1.311"
 
 typedef struct{
 	u32 pid;
@@ -215,6 +219,8 @@ typedef struct{
     bool 			button;
     bool 			in1;
     bool 			in2;
+    u32 			in1Cnt;
+    u32 			in2Cnt;
     float 			temp;
 	u16 			voltage;
 	u16 			capacity;
@@ -248,8 +254,13 @@ typedef struct{
     u32				secondsOfDuration;
     //u16            	smsRecvTimeout;
     u8				buttonTimeout;//in sec
+
     u8				in1Timeout;
+    sCounterData    counter1;
+
     u8				in2Timeout;
+    sCounterData    counter2;
+
     sSecuritySettings 	securitySettings;
     sFtpSettings		ftpSettings;
 }sProgrammSettings;

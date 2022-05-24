@@ -51,7 +51,7 @@ static sProgrammSettings firstInitSettings =
     .ftpSettings.srvAddress = "94.228.255.152",
     .ftpSettings.srvPort = 21,
     .ftpSettings.filePath = "/M66/",
-    .ftpSettings.fileName = "APPGS3MDM32.bin",
+    .ftpSettings.fileName = "GSM-M_v1_36.bin",
     .ftpSettings.usrName = "firmware",
     .ftpSettings.usrPassw = "123qwe45RTY"
 };

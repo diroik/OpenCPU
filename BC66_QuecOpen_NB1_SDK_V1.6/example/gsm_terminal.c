@@ -59,7 +59,7 @@ static u8 m_RxBuf_Uart[SERIAL_RX_BUFFER_LEN];
 #define TCP_TIMER_PERIOD     	800//500
 #define TIMEOUT_90S_PERIOD   	90000
 #define CSQ_TIMER_PERIOD     	180000
-#define GPIO_INPUT_TIMER_PERIOD 100
+#define GPIO_INPUT_TIMER_PERIOD 10
 
 static s32 timeout_90S_monitor = FALSE;
 
@@ -134,6 +134,8 @@ static sProgrammData programmData =
 	    .dataState.button	= FALSE,
 	    .dataState.in1		= FALSE,
 	    .dataState.in2		= FALSE,
+	    .dataState.in1Cnt   = 0,
+	    .dataState.in2Cnt   = 0,
 	    .dataState.temp 	= 0.0,
 	    .dataState.rssi			= 0,
 	    .dataState.ber 			= 0,
@@ -901,11 +903,49 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 	if(programmData.firstInit == FALSE) return;
 	if (GPIO_TIMER_ID == timerId)
 	{
-		//APP_DEBUG("<-- Get the button_pin GPIO level value: %d -->\r\n", Ql_GPIO_GetLevel(button_pin));
-		s32 btp = GetInputValue(&button_pin, 	&programmData.buttonCnt,(u32)(programmSettings.buttonTimeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
-		s32 i1p = GetInputValue(&in1_pin, 		&programmData.in1Cnt, 	(u32)(programmSettings.in1Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
-		s32 i2p = GetInputValue(&in2_pin, 		&programmData.in2Cnt, 	(u32)(programmSettings.in2Timeout * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
+		//in1
+		if(programmSettings.in1Timeout > 0){
+			s32 i1p = GetInputValue(&in1_pin, &programmData.in1Cnt, (u32)(programmSettings.in1Timeout * 1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
+			if(i1p >= 0) programmData.dataState.in1 = (bool)i1p;
+			if(programmData.Hin1State != programmData.dataState.in1){//is changed
+				programmData.Hin1State = programmData.dataState.in1;
+				APP_DEBUG("<-- Get the in1_pin GPIO level value changed: %d -->\r\n", programmData.dataState.in1);
+			}
+		}
+		else{
+			s32 i1cnt = GetInputValue(&in1_pin, &programmData.in1Cnt, 	6, FALSE );//6*10 ms
+			if(i1cnt >= 0) programmData.dataState.in1 = (bool)i1cnt;
+			if(programmData.Hin1State != programmData.dataState.in1){//is changed
+				programmData.Hin1State = programmData.dataState.in1;
+				if(programmData.dataState.in1 == FALSE){
+					programmData.dataState.in1Cnt++;
+					APP_DEBUG("<-- Get the in1_cnt update: %d -->\r\n", programmData.dataState.in1Cnt);
+				}
+			}
+		}
+		//in2
+		if(programmSettings.in2Timeout > 0){
+			s32 i2p = GetInputValue(&in2_pin, &programmData.in2Cnt, (u32)(programmSettings.in2Timeout * 1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
+			if(i2p >= 0) programmData.dataState.in2 = (bool)i2p;
+			if(programmData.Hin2State != programmData.dataState.in2){//is changed
+				programmData.Hin2State = programmData.dataState.in2;
+				APP_DEBUG("<-- Get the in2_pin GPIO level value changed: %d -->\r\n", programmData.dataState.in2);
+			}
+		}
+		else{
+			s32 i2cnt = GetInputValue(&in2_pin, &programmData.in2Cnt, 	6, FALSE );//6*10 ms
+			if(programmData.Hin2State != programmData.dataState.in2){//is changed
+				programmData.Hin2State = programmData.dataState.in2;
+				if(programmData.dataState.in2 == FALSE){
+					programmData.dataState.in2Cnt++;
+					APP_DEBUG("<-- Get the in2_cnt update: %d -->\r\n", programmData.dataState.in2Cnt);
+				}
+			}
+		}
 
+		//button
+		u32 btim = programmSettings.buttonTimeout == 0 ? 30 :  programmSettings.buttonTimeout;
+		s32 btp = GetInputValue(&button_pin, &programmData.buttonCnt,  (u32)(btim * 	1000/GPIO_INPUT_TIMER_PERIOD), FALSE );
 		if(btp >= 0) programmData.dataState.button = (bool)btp;
 		if(programmData.HbuttonState != programmData.dataState.button){//is changed
 			programmData.HbuttonState = programmData.dataState.button;
@@ -916,16 +956,6 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 				APP_DEBUG("<-- restore_default_flash ret=%d -->\r\n", ret);
 				reboot(&programmData);
 			}
-		}
-		if(i1p >= 0) programmData.dataState.in1 = (bool)i1p;
-		if(programmData.Hin1State != programmData.dataState.in1){//is changed
-			programmData.Hin1State = programmData.dataState.in1;
-			APP_DEBUG("<-- Get the in1_pin GPIO level value changed: %d -->\r\n", programmData.dataState.in1);
-		}
-		if(i2p >= 0) programmData.dataState.in2 = (bool)i2p;
-		if(programmData.Hin2State != programmData.dataState.in2){//is changed
-			programmData.Hin2State = programmData.dataState.in2;
-			APP_DEBUG("<-- Get the in2_pin GPIO level value changed: %d -->\r\n", programmData.dataState.in2);
 		}
 	}
 	else if (LED_TIMER_ID == timerId)
@@ -970,7 +1000,15 @@ static void time_callback_onTimer(u32 timerId, void* param)
 			if ( *((u32*)param) % 60 == 0)
 			{
 				if(GetLocalTime() == TRUE){
-
+					//sync
+					//u32 addSeconds = programmData.dataState.totalSeconds % 60;
+					//if(addSeconds != 0)
+					//{
+					//	u32 upMinutes = *((u32*)param)/60;
+					//	APP_DEBUG("<--time_callback_onTimer: upTime=%u, totalSeconds=%u, upMinutes=%u, addSeconds=%u -->\r\n", *((u32*)param), programmData.dataState.totalSeconds, upMinutes, addSeconds);
+					//	*((u32*)param) = upMinutes * 60 + addSeconds;
+					//	APP_DEBUG("<--time_callback_onTimer: new upTime=%u -->\r\n", *((u32*)param));
+					//}
 				}
 				//u32 totalMinutes = programmData.dataState.totalSeconds/60;
 				//APP_DEBUG("<--time_callback_onTimer: totalSeconds=%d.-->\r\n", programmData.dataState.totalSeconds);
@@ -1033,6 +1071,9 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	        		m_pCurrentPos[m_remain_len] = 0;
 	        		APP_DEBUG("<-- Send ping [%s] -->\r\n", m_pCurrentPos);
 	        	}
+	        	else{
+	        		APP_DEBUG("<-- ERROR Send ping len=[%d] -->\r\n", len);
+	        	}
 	        }
 	    }
 		////////////////
@@ -1089,7 +1130,7 @@ static void InitFlash(void)
         ret = init_flash(&programmSettings);
         if(ret == TRUE)
         {
-        	APP_DEBUG("<-- init_flash OK crc=<%d> apn=<%s> user=<%s> pass=<%s> server=<%s> port=<%d> baudrate=<%d> toreconnect=<%d> duration=<%d> toreboot=<%d> -->\r\n",
+        	APP_DEBUG("<-- init_flash OK crc=<%d> apn=<%s> user=<%s> pass=<%s> server=<%s> port=<%d> baudrate=<%d> toreconnect=<%d> duration=<%d> toreboot=<%d> counter1=[cnt=<%l> koef=<%d>] counter2=[cnt=<%l> koef=<%d>] -->\r\n",
         			programmSettings.crc,
         			programmSettings.gsmSettings.gprsApn,
         			programmSettings.gsmSettings.gprsUser,
@@ -1099,8 +1140,18 @@ static void InitFlash(void)
         			programmSettings.serPortSettings.baudrate,
         			programmSettings.secondsToReconnect,
         			programmSettings.secondsOfDuration,
-        			programmSettings.secondsToReboot
+        			programmSettings.secondsToReboot,
+        			programmSettings.counter1.ImpulseCnt,
+        			programmSettings.counter1.Koeff,
+        			programmSettings.counter2.ImpulseCnt,
+        			programmSettings.counter2.Koeff
         	);
+
+        	//init sram
+        	programmData.dataState.in1Cnt = programmSettings.counter1.ImpulseCnt;
+        	programmData.dataState.in2Cnt = programmSettings.counter2.ImpulseCnt;
+
+
         	return;
         }
         else
@@ -1210,7 +1261,7 @@ static void InitTIME(void)
 	if(ret == RIL_AT_SUCCESS)
 	{
 		APP_DEBUG("<-- InitTIME status=%d -->\r\n", status);
-		if(status != 1 || status != 3){
+		if(status != 1){
 			status = 1;//was for BC66NADA status=3
 			ret = RIL_SetTimeSynch_Status(status);
 			if(ret == RIL_AT_SUCCESS){
@@ -1221,7 +1272,6 @@ static void InitTIME(void)
 
     Ql_Timer_Register(SYSTEM_TIME_TIMER_ID, time_callback_onTimer, (void*)&upTime);
     Ql_Timer_Start(SYSTEM_TIME_TIMER_ID, 1000, TRUE);
-
 
     ret = RIL_NW_GetSignalQuality(&programmData.dataState.rssi, &programmData.dataState.ber);
     APP_DEBUG("<-- Signal strength: %d, BER: %d -->\r\n", upTime, programmData.dataState.rssi, programmData.dataState.ber);
@@ -1310,11 +1360,11 @@ static bool GetLocalTime(void)
     {
         //This function get total seconds elapsed   since 1970.01.01 00:00:00.
         u32 ts = Ql_Mktime(&time);
-        APP_DEBUG("<--Local time successfuly determined: %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
+        APP_DEBUG("<-- Time successfuly determined (UTC): %i.%i.%i %i:%i:%i timezone=%i-->\r\n", time.day, time.month, time.year, time.hour, time.minute, time.second,time.timezone);
 
         if(ts > 0){
-        	programmData.dataState.totalSeconds = ts;
         	programmData.dataState.timezone = time.timezone/4;
+        	programmData.dataState.totalSeconds = ts + (programmData.dataState.timezone*60*60);
         }
         APP_DEBUG("<--totalSeconds=<%lu>-->\r\n", programmData.dataState.totalSeconds);
         ret = TRUE;

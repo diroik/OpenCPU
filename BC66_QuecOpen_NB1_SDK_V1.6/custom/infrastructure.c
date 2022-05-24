@@ -509,7 +509,14 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			return ret;
 		}
 
-		if(Ql_strcmp(src_str, "cmd reboot") == 0)
+		if(Ql_strstr(src_str, "cmd set authorization=") != 0)
+		{
+  	      Ql_strcpy(tmp_buff, "\r\n");
+  	      Ql_strcat(tmp_buff, "already authorization!");
+  	      Ql_strcat(tmp_buff, "\r\n");
+  	      ret = tmp_buff;
+		}
+		else if(Ql_strcmp(src_str, "cmd reboot") == 0)
 		{
 			reboot(programmData);
 			Ql_strcpy(tmp_buff, "\r\nrebooting\r\n");
@@ -874,6 +881,54 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "input1 timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 0){ // 0 - impulses
+    			  sett_in_ram->in1Timeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "input2 timeout") == 0)
+    	  {
+    		  s32 timeout = Ql_atoi(val);
+    		  if(timeout >= 0){ // 0 - impulses
+    			  sett_in_ram->in2Timeout = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "counter1 cnt") == 0)
+    	  {
+    		  u32 value = atol(val);
+    		  if(value > 0){ //
+    			  sett_in_ram->counter1.ImpulseCnt = value;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "counter1 koeff") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value > 0){
+    			  sett_in_ram->counter1.Koeff = value;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "counter2 cnt") == 0)
+    	  {
+    		  u32 value = atol(val);
+    		  if(value > 0){ //
+    			  sett_in_ram->counter2.ImpulseCnt = value;
+    			  r = TRUE;
+    		  }
+    	  }
+    	  else if(Ql_strcmp(cmd, "counter2 koeff") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value > 0){
+    			  sett_in_ram->counter2.Koeff = value;
+    			  r = TRUE;
+    		  }
+    	  }
     	  else if(Ql_strcmp(cmd, "authorization password") == 0)
     	  {
     		  if(vlen <= AUT_PASSWORD_LEN)
@@ -913,315 +968,315 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
   //APP_DEBUG("get_cmd len=<%d> cmd=<%s>\r\n", len, cmd);
   if(len > 0)
   {
-	tmp_buff[0] = 0;
-    if(Ql_strcmp(cmd, "mode") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.mode);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "apn") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsApn);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "user") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsUser);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "password") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsPass);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    //firmware ftp update
-    else if(Ql_strcmp(cmd, "ftp user") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrName);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "ftp password") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrPassw);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "ftp address") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.srvAddress);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "ftp port") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->ftpSettings.srvPort);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "ftp filename") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.fileName);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "ftp filepath") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.filePath);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    ////////////////////////////////////////
-    else if(Ql_strcmp(cmd, "daddress") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ipSettings.dstAddress);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "saddress") == 0)
-    {
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, sett_in_ram->ipSettings.srcAddress);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "dport") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.dstPort);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "sport") == 0)
-    {
-      Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.srcPort);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "duration") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsOfDuration);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "baudrate") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "stopbits") == 0)
-    {
-      u32 value = sett_in_ram->serPortSettings.stopBits;
-	  Ql_sprintf(tbuff ,"%d", value);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "parity") == 0)
-    {
-      u32 value = sett_in_ram->serPortSettings.parity;
-      Ql_sprintf(tbuff ,"%d", value);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "databits") == 0)
-    {
-      u32 value = sett_in_ram->serPortSettings.dataBits;
-      Ql_sprintf(tbuff ,"%d", value);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "toreboot") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToReboot);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "toreconnect") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToReconnect);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
-    {
-	  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToPing);
-      Ql_strcpy(tmp_buff, "\r\n");
-      Ql_strcat(tmp_buff, cmd);
-      Ql_strcat(tmp_buff, "=");
-      Ql_strcat(tmp_buff, tbuff);
-      Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "version") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%s", FW_VERSION);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "firmware version") == 0)
-    {
-      	s32 rr = RIL_GetFirmwareVer(tbuff); //Ql_GetSDKVer((u8*)tbuff, sizeof(tbuff));
-      	if(rr < 0){
-      		Ql_sprintf(tbuff ,"%s", "Get Firmware Version Failure");
-      	}
-      	else{
-        	Ql_strcpy(tmp_buff, "\r\n");
-          	Ql_strcat(tmp_buff, cmd);
-          	Ql_strcat(tmp_buff, "=");
-          	Ql_strcat(tmp_buff, tbuff);
-          	Ql_strcat(tmp_buff, "\r\n");
-      	}
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "battery voltage") == 0)
-    {
-    	u32 capacity, voltage;
-    	s32 rr = RIL_GetPowerSupply(&capacity, &voltage);
-      	if(rr < 0){
-      		Ql_sprintf(tbuff ,"%s", "Get GetPowerSupply Failure");
-      	}
-      	else{
-      		Ql_sprintf(tbuff ,"capacity:%d, voltage:%d", capacity, voltage);
-        	Ql_strcpy(tmp_buff, "\r\n");
-          	Ql_strcat(tmp_buff, cmd);
-          	Ql_strcat(tmp_buff, "=");
-          	Ql_strcat(tmp_buff, tbuff);
-          	Ql_strcat(tmp_buff, "\r\n");
-      	}
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "sampling count") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%d", sett_in_ram->adcSettings.samplingCount);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "sampling interval") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%d", sett_in_ram->adcSettings.samplingInterval);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "button timeout") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%d", sett_in_ram->buttonTimeout);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "input1 timeout") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%d", sett_in_ram->in1Timeout);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "input2 timeout") == 0)
-    {
-    	Ql_sprintf(tbuff ,"%d", sett_in_ram->in2Timeout);
-    	Ql_strcpy(tmp_buff, "\r\n");
-      	Ql_strcat(tmp_buff, cmd);
-      	Ql_strcat(tmp_buff, "=");
-      	Ql_strcat(tmp_buff, tbuff);
-      	Ql_strcat(tmp_buff, "\r\n");
-      ret = tmp_buff;
-    }
-    else if(Ql_strcmp(cmd, "input1 value") == 0)
+	  tmp_buff[0] = 0;
+		if(Ql_strcmp(cmd, "mode") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.mode);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "apn") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsApn);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "user") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsUser);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "password") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->gsmSettings.gprsPass);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		//firmware ftp update
+		else if(Ql_strcmp(cmd, "ftp user") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrName);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "ftp password") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.usrPassw);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "ftp address") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.srvAddress);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "ftp port") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->ftpSettings.srvPort);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "ftp filename") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.fileName);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "ftp filepath") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ftpSettings.filePath);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		////////////////////////////////////////
+		else if(Ql_strcmp(cmd, "daddress") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ipSettings.dstAddress);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "saddress") == 0)
+		{
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, sett_in_ram->ipSettings.srcAddress);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "dport") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.dstPort);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "sport") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->ipSettings.srcPort);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "duration") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsOfDuration);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "baudrate") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "stopbits") == 0)
+		{
+		  u32 value = sett_in_ram->serPortSettings.stopBits;
+		  Ql_sprintf(tbuff ,"%d", value);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "parity") == 0)
+		{
+		  u32 value = sett_in_ram->serPortSettings.parity;
+		  Ql_sprintf(tbuff ,"%d", value);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "databits") == 0)
+		{
+		  u32 value = sett_in_ram->serPortSettings.dataBits;
+		  Ql_sprintf(tbuff ,"%d", value);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "toreboot") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToReboot);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "toreconnect") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToReconnect);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
+		{
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->secondsToPing);
+		  Ql_strcpy(tmp_buff, "\r\n");
+		  Ql_strcat(tmp_buff, cmd);
+		  Ql_strcat(tmp_buff, "=");
+		  Ql_strcat(tmp_buff, tbuff);
+		  Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "version") == 0)
+		{
+			Ql_sprintf(tbuff ,"%s", FW_VERSION);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "firmware version") == 0)
+		{
+			s32 rr = RIL_GetFirmwareVer(tbuff); //Ql_GetSDKVer((u8*)tbuff, sizeof(tbuff));
+			if(rr < 0){
+				Ql_sprintf(tbuff ,"%s", "Get Firmware Version Failure");
+			}
+			else{
+				Ql_strcpy(tmp_buff, "\r\n");
+				Ql_strcat(tmp_buff, cmd);
+				Ql_strcat(tmp_buff, "=");
+				Ql_strcat(tmp_buff, tbuff);
+				Ql_strcat(tmp_buff, "\r\n");
+			}
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "battery voltage") == 0)
+		{
+			u32 capacity, voltage;
+			s32 rr = RIL_GetPowerSupply(&capacity, &voltage);
+			if(rr < 0){
+				Ql_sprintf(tbuff ,"%s", "Get GetPowerSupply Failure");
+			}
+			else{
+				Ql_sprintf(tbuff ,"capacity:%d, voltage:%d", capacity, voltage);
+				Ql_strcpy(tmp_buff, "\r\n");
+				Ql_strcat(tmp_buff, cmd);
+				Ql_strcat(tmp_buff, "=");
+				Ql_strcat(tmp_buff, tbuff);
+				Ql_strcat(tmp_buff, "\r\n");
+			}
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "sampling count") == 0)
+		{
+			Ql_sprintf(tbuff ,"%d", sett_in_ram->adcSettings.samplingCount);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "sampling interval") == 0)
+		{
+			Ql_sprintf(tbuff ,"%d", sett_in_ram->adcSettings.samplingInterval);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "button timeout") == 0)
+		{
+			Ql_sprintf(tbuff ,"%d", sett_in_ram->buttonTimeout);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "input1 timeout") == 0)
+		{
+			Ql_sprintf(tbuff ,"%d", sett_in_ram->in1Timeout);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "input2 timeout") == 0)
+		{
+			Ql_sprintf(tbuff ,"%d", sett_in_ram->in2Timeout);
+			Ql_strcpy(tmp_buff, "\r\n");
+			Ql_strcat(tmp_buff, cmd);
+			Ql_strcat(tmp_buff, "=");
+			Ql_strcat(tmp_buff, tbuff);
+			Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+		}
+		else if(Ql_strcmp(cmd, "input1 value") == 0)
         {
         	Ql_sprintf(tbuff ,"%d", programmData->dataState.in1);
         	Ql_strcpy(tmp_buff, "\r\n");
@@ -1241,6 +1296,48 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
           	Ql_strcat(tmp_buff, "\r\n");
           ret = tmp_buff;
         }
+		else if(Ql_strcmp(cmd, "counter1 cnt") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", programmData->dataState.in1Cnt);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+        else if(Ql_strcmp(cmd, "counter2 cnt") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", programmData->dataState.in2Cnt);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+		else if(Ql_strcmp(cmd, "counter1 koeff") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", sett_in_ram->counter1.Koeff);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+        else if(Ql_strcmp(cmd, "counter2 koeff") == 0)
+        {
+        	Ql_sprintf(tbuff ,"%d", sett_in_ram->counter2.Koeff);
+        	Ql_strcpy(tmp_buff, "\r\n");
+          	Ql_strcat(tmp_buff, cmd);
+          	Ql_strcat(tmp_buff, "=");
+          	Ql_strcat(tmp_buff, tbuff);
+          	Ql_strcat(tmp_buff, "\r\n");
+          ret = tmp_buff;
+        }
+
+
         else if(Ql_strcmp(cmd, "termo value") == 0 || Ql_strcmp(cmd, "temp value") == 0)
         {
         	Ql_sprintf(tbuff ,"%f", programmData->dataState.temp);
