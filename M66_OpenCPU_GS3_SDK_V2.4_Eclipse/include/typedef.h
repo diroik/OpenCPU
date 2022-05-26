@@ -184,7 +184,6 @@ typedef struct{
 }sProgrammSettings;
 
 typedef struct{
-
 	s32				mainTaskId;
 	s32				subTaskId1;
     bool        	needReboot;

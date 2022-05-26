@@ -148,7 +148,6 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 			return ret;
 		}
 
-
 		if(programmData->autCnt == 0)//не авторизировано
 		{//
 			char *cmdstart = "cmd set ";
@@ -402,8 +401,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
-
-
     	  //firmware ftp update
     	  else if(Ql_strcmp(cmd, "ftp user") == 0)
     	  {
@@ -416,7 +413,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  }
     	  else if(Ql_strcmp(cmd, "ftp password") == 0)
     	  {
-    		  if(vlen <= MAX_FTP_PASSWORD_LEN)
+    		  if(vlen < MAX_FTP_PASSWORD_LEN)
     		  {
     			  Ql_memset(sett_in_ram->ftpSettings.usrPassw, 0, MAX_FTP_PASSWORD_LEN);
     			  Ql_strncpy(sett_in_ram->ftpSettings.usrPassw, val, vlen);
@@ -558,7 +555,6 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
-
     	  else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
@@ -995,7 +991,8 @@ bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket)
 		bShort tmp;
 		tmp.Data_b[1] = buffer[2];
 		tmp.Data_b[0] = buffer[3];
-		if(tmp.Data_s == (len-4)){
+		if(tmp.Data_s == (len-4))
+		{
 			u8 pid = buffer[0];
 			u8 typ = buffer[1];
 			//if(typ == 0x02){//0x02-from server, 0x03-from device, 0x0B-init packet (???)

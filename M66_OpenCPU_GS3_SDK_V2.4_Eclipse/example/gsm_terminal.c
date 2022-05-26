@@ -88,8 +88,10 @@ static s32 m_socketid = -1;
 static s32 m_remain_len = 0;     // record the remaining number of bytes in send buffer.
 static char *m_pCurrentPos = NULL;
 
+/*****************************************************************
+* Other Param
+******************************************************************/
 #define TEMP_BUFFER_LEN 512
-
 
 /*****************************************************************
 * ADC Param
@@ -438,12 +440,12 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     {
     	u32 cnt = WTD_TMR_TIMEOUT*2/100 + 1;
     	APP_DEBUG("<-- time to not feed logic watchdog (wtdId=%d) needReboot=(%s) cnt=(%d)-->\r\n", *wtdid, programmData.needReboot == TRUE ? "TRUE" : "FALSE", cnt);
-    	do{
+    	do
+    	{
     		Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
     		Ql_Sleep(100);
     	}
     	while(cnt--);
-
     	APP_DEBUG("<-- wdt_callback_onTimer wait real wdt reboot successfull, try Ql_Reset-->\r\n");
     	Ql_Sleep(100);
     	Ql_Reset(0);
@@ -635,6 +637,9 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	        		m_pCurrentPos[m_remain_len] = 0;
 	        		APP_DEBUG("<-- Send ping [%s] -->\r\n", m_pCurrentPos);
 	        	}
+	        	else{
+	        		APP_DEBUG("<-- ERROR Send ping len=[%d] -->\r\n", len);
+	        	}
 	        }
 	    }
 		////////////////
@@ -780,7 +785,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
     do
     {
         ret = Ql_SOC_Recv(socketId, m_recv_buf, RECV_BUFFER_LEN);
-        if((ret < 0) && (ret != -2))
+        if((ret < 0) && (ret != SOC_WOULDBLOCK))
         {
             APP_DEBUG("<-- Receive data failure,ret=%d. -->\r\n",ret);
             APP_DEBUG("<-- Close socket. -->\r\n");
@@ -789,7 +794,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
             m_tcp_state = STATE_SOC_CREATE;
             break;
         }
-        else if(ret == -2)
+        else if(ret == SOC_WOULDBLOCK)
         {
             //wait next CallBack_socket_read
             break;
@@ -817,7 +822,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
     		{
     			APP_DEBUG("<-- and write to UART_PORT3 mode=%d, ret=%d -->\r\n", programmSettings.ipSettings.mode, ret);
     			if(programmSettings.ipSettings.mode == 101)
-    			{//with pid
+    			{//data with pid
     				if(ret > 4 &&  AnalizePidPacket(m_recv_buf, ret, &programmData.lastPacket) == TRUE){
     					programmData.lastPacket.timeStamp = programmData.dataState.totalSeconds;
     					s32 nlen = (ret-4);
@@ -1338,13 +1343,14 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             {
             	if(m_socketid >= 0)
             	{
-            		s16 rcnt = 3;
+            		s16 rcnt = 5;
             		do
             		{
                 		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
                 		APP_DEBUG("<--socket <%d> closed, ret(%d)-->\r\n", m_socketid, ret);
                 		if(ret >= 0)
                 			break;
+                		//Ql_Sleep(1000);
             		}
             		while(rcnt-- > 0);
             		if(rcnt <= 0){
