@@ -242,5 +242,7 @@ s32  Ql_NIDD_SendData(s32 niddId, char* data);
 
 s32  Ql_NIDD_CloseConnection(s32 niddId);
 
+//////////////////////////////////////////////////////////////////
+s32  Ql_NW_Ping(char* addr);
 
 #endif // __RIL_NETWORK_H__

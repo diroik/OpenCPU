@@ -580,7 +580,6 @@ s32  Ql_NIDD_SendData(s32 niddId, char* data)
     return retRes;
 }
 
-
 s32  Ql_NIDD_CloseConnection(s32 niddId)
 {
     s32 retRes = 0;
@@ -597,7 +596,63 @@ s32  Ql_NIDD_CloseConnection(s32 niddId)
     return retRes;
 }
 
+///////////////////////////////////////////////////////////////////////
+static s32 ATResponse_PING_Handler(char* line, u32 len, void* userdata)
+{
+	APP_DEBUG("ATResponse_PING_Handler=<%s>\r\n", line);
+    char *head = Ql_RIL_FindString(line, len, "+QPING:"); //continue wait
+    if(head)
+    {
+    	s32 *pingcnt = (u32*)userdata;
+    	*pingcnt = *pingcnt - 1;
 
+    	APP_DEBUG("ATResponse_PING_Handler pingcnt=<%d>\r\n", *pingcnt);
+    	if(*pingcnt > 0)
+    		return  RIL_ATRSP_CONTINUE;//RIL_ATRSP_CONTINUE;
+    	else
+    		return  RIL_ATRSP_SUCCESS;
+    }
+
+    head = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
+    if(head)
+    {
+        return RIL_ATRSP_CONTINUE;// RIL_ATRSP_SUCCESS;
+    }
+    head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+    head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+    return RIL_ATRSP_CONTINUE; //continue wait
+}
+
+s32  Ql_NW_Ping(char* addr)
+{
+    //s32 retRes 			= -1;
+    char strAT[150] 	= {0};
+    Ql_memset(strAT, 0x00, sizeof(strAT));
+
+    Ql_strcpy(strAT, "AT+QPING=");
+    Ql_strcat(strAT, "0,");//contextID
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, addr);
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, "\r\n");
+    //Ql_strcat(strAT, "\",10,");//timeout=10s
+    //u32 cmdLen 			= Ql_strlen(strAT);
+    s32 pingcnt = 4;
+    //Ql_sprintf(&strAT[cmdLen],"%d", pingcnt);
+    u32 cmdLen 			= Ql_strlen(strAT);
+    APP_DEBUG("Ql_NW_Ping strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
+    s32 ret = Ql_RIL_SendATCmd(strAT, cmdLen, ATResponse_PING_Handler, (void*)&pingcnt, 0);
+
+    return ret;
+}
 
 #endif  //__OCPU_RIL_SUPPORT__
 

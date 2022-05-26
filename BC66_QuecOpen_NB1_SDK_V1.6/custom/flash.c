@@ -36,7 +36,7 @@ static sProgrammSettings firstInitSettings =
 {
     .crc        = 0xAA,
     .tmp1       = 0xFF,
-    .tmp2       = 0xFF,
+    .tryConnectCnt = 5,
 
     .adcSettings.samplingCount = 5,
     .adcSettings.samplingInterval = 200,
@@ -59,8 +59,8 @@ static sProgrammSettings firstInitSettings =
     .serPortSettings.dataBits         	= DB_8BIT,
     .serPortSettings.flowCtrl			= FC_NONE,
 
-    .secondsToReboot 	= 600000,//86400s=1d 604800s=1week
-    .secondsToReconnect = 21600,//5400s=1.5h 21600=6h
+    .secondsToReboot 	= 604800,//86400s=1d 604800s=1week
+    .secondsToReconnect = 3600,//3600s=1h 5400s=1.5h 21600s=6h
     .secondsToPing		= 60, // 300s = 5min
 
     //.serPortDataTimeout = 500,//
@@ -68,7 +68,6 @@ static sProgrammSettings firstInitSettings =
     .secondsOfDuration = 300,
 
     .buttonTimeout = 30,
-
     .in1Timeout	   = 3,
     .counter1.ImpulseCnt = 0,
     .counter1.Koeff = 1000,
@@ -111,7 +110,7 @@ bool restore_default_flash(sProgrammSettings *sett_in_ram)
 
 	*sett_in_ram = firstInitSettings;//*tmp;
 	sett_in_ram->tmp1 = 0xAA;
-	sett_in_ram->tmp2 = 0xAA;
+	//sett_in_ram->tmp2 = 0xAA;
 	//sett_in_ram->crc = calc_settings_crc(sett_in_ram); //in write_to_flash_settings
 
 	ret = write_to_flash_settings(sett_in_ram);
@@ -134,9 +133,9 @@ bool init_flash(sProgrammSettings *sett_in_ram)
 
   if(r == 0 )
   {
-	  if(tmp.tmp1 != 0xAA || tmp.tmp2 != 0xAA)
+	  if( tmp.tmp1 != 0xAA )
 	  {//first init
-		  APP_DEBUG("<--first_init tmp1=%d tmp2=%d-->\r\n", tmp.tmp1, tmp.tmp2);
+		  APP_DEBUG("<--first_init tmp1=%d-->\r\n", tmp.tmp1);
 		  ret = restore_default_flash(sett_in_ram);
 	  }
 	  else

@@ -206,7 +206,8 @@ typedef struct{
 
 #else
 
-#define FW_VERSION "1.311"
+#define FW_VERSION "1.36"
+#define HW_VERSION "GSM-B01"
 
 typedef struct{
 	u32 pid;
@@ -239,7 +240,7 @@ typedef struct{
 typedef struct{
     u16    crc;
     u8     tmp1;
-    u8     tmp2; //tmp for aligned to 4 bytes
+    u8     tryConnectCnt;
 
     sAdcSettings		adcSettings;
     sGsmSettings        gsmSettings;
@@ -286,14 +287,14 @@ typedef struct{
     bool 			Hin2State;
     u32            	rebootCnt;
     u32            	reconnectCnt;
+    u32            	tryconnectCnt;
     u32            	durationCnt;
     u32            	pingCnt;
     u32 			autCnt;
+    s32 			ledCnt;
+
     sDataJsonParams dataState;
     sPidPacket      lastPacket;
-
-    //s64				buttonTimerTimeout;//in 10 ms
-
 }sProgrammData;
 
 #endif

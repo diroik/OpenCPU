@@ -78,10 +78,16 @@ static s32 m_socketid = -1;
 
 static s32 m_remain_len = 0;     // record the remaining number of bytes in send buffer.
 static char *m_pCurrentPos = NULL;
+
+/*****************************************************************
+* Other Param
+******************************************************************/
+#define TEMP_BUFFER_LEN 512
+
 /*****************************************************************
 * rtc param
 ******************************************************************/
-//static u32 Rtc_id = 0x101;
+//static u32 Rtc_id = 111;
 //static u32 Rtc_Interval = 60*1000  *1; //1min
 //volatile bool RTC_Flag = FALSE;
 /*****************************************************************
@@ -115,6 +121,7 @@ static sProgrammData programmData =
 
 	    .rebootCnt 		= 0,
 	    .reconnectCnt 	= 0,
+	    .tryconnectCnt 	= 0,
 	    .durationCnt    = 0,//!!!
 	    .pingCnt		= 0,
 	    .buttonCnt 		= 0,
@@ -128,7 +135,7 @@ static sProgrammData programmData =
 	    .Hin2State		= FALSE,
 
 	    .autCnt			= 0,
-
+	    .ledCnt			= 0,
 
 	    .dataState.totalSeconds 	= 0,
 	    .dataState.button	= FALSE,
@@ -147,6 +154,7 @@ static sProgrammData programmData =
 static sProgrammSettings programmSettings;
 
 static s32 				led_cnt 	= 5;
+static Enum_PinName  	wdt_pin 	= PINNAME_RI;
 static Enum_PinName  	led_pin 	= PINNAME_GPIO2;//30
 static Enum_PinName  	button_pin 	= PINNAME_GPIO3;//31
 static Enum_PinName  	in1_pin 	= PINNAME_GPIO4;//32
@@ -512,6 +520,20 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             }
             case TCP_STATE_SOC_REGISTER:
             {
+            	if(programmData.durationCnt == 0) break;
+            	if(programmData.tryconnectCnt >= programmSettings.tryConnectCnt){
+            		programmData.durationCnt = 0;
+            		APP_DEBUG("<--The max number of connection attempts has been exceeded! tryconnectCnt=%d-->\r\n", programmData.tryconnectCnt);
+            		programmData.tryconnectCnt = 0;//na vsiakiy pojarniy
+    	  	        if(m_socketid >= 0){
+    	  				m_tcp_state = TCP_STATE_SOC_CLOSE;
+    	  	        }
+    	  	        else{
+    	  	        	m_tcp_state = TCP_STATE_NW_GET_SIMSTATE;
+    	  	        }
+            		break;
+            	}
+
                 ret = Ql_SOC_Register(callback_soc_func, NULL);
                 if (SOC_SUCCESS == ret)
                 {
@@ -561,7 +583,7 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                     m_tcp_state = TCP_STATE_SOC_SEND;
 
                 }
-                else if(ret == SOC_NONBLOCK)
+                else if(ret == SOC_NONBLOCK)//не менять на SOC_ERROR_WOULDBLOCK
                 {
                       if (!timeout_90S_monitor)//start timeout monitor
                       {
@@ -658,9 +680,17 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
             {
             	if(m_socketid >= 0)
             	{
-            		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
-            		APP_DEBUG("<--socket closed, ret(%d)-->\r\n", ret);
-            		if(ret < 0){
+            		s16 rcnt = 5;
+            		do
+            		{
+                		ret = Ql_SOC_Close(m_socketid);//error , Ql_SOC_Close
+                		APP_DEBUG("<--socket <%d> closed, ret(%d)-->\r\n", m_socketid, ret);
+                		if(ret >= 0)
+                			break;
+                		//Ql_Sleep(1000);
+            		}
+            		while(rcnt-- > 0);
+            		if(rcnt <= 0){
             			programmData.needReboot = TRUE;
             		}
             	}
@@ -698,37 +728,39 @@ void callback_socket_connect(s32 socketId, s32 errCode, void* customParam )
            Ql_Timer_Stop(TIMEOUT_90S_TIMER_ID);
            timeout_90S_monitor = FALSE;
         }
+        programmData.pingCnt  = programmSettings.secondsToPing - 5;//reload ping cnt (was 0)
+        if(programmData.tryconnectCnt < programmSettings.tryConnectCnt)//add tryconnectCnt
+        	programmData.tryconnectCnt++;
 
-        APP_DEBUG("<--Callback: socket connect successfully.-->\r\n");
-        //////// send init packet
-        programmData.pingCnt  = 0;//reload ping cnt
+        APP_DEBUG("<--Callback: socket connect successfully. Try connect=%d-->\r\n", programmData.tryconnectCnt);
 
-
+        //////// forming send init packet
         programmData.lastPacket.pid = 0;
         programmData.lastPacket.timeStamp = programmData.dataState.totalSeconds;
-
 		m_pCurrentPos = m_send_buf;
 		m_remain_len = 0;
-
-		bShort tmp;
-		tmp.Data_s = Ql_strlen(programmData.dataState.imei) + Ql_strlen(programmData.dataState.iccid) + 1;
-
-		m_pCurrentPos[m_remain_len++] = 0;
-		m_pCurrentPos[m_remain_len++] = 0x0B;
-
-		m_pCurrentPos[m_remain_len++] = tmp.Data_b[1];
-		m_pCurrentPos[m_remain_len++] = tmp.Data_b[0];
-
+		if(programmSettings.ipSettings.mode == 101){
+			m_pCurrentPos[m_remain_len++] = 0;
+			m_pCurrentPos[m_remain_len++] = 0x0B;
+			bShort length;
+			length.Data_s = Ql_strlen(programmData.dataState.imei) + Ql_strlen(programmData.dataState.iccid) + 1;
+			m_pCurrentPos[m_remain_len++] = length.Data_b[1];
+			m_pCurrentPos[m_remain_len++] = length.Data_b[0];
+		}
 		u32 len = Ql_strlen(programmData.dataState.imei);
 		Ql_memcpy((m_pCurrentPos + m_remain_len), programmData.dataState.imei, len);
 		m_remain_len += len;
-
 		*(m_pCurrentPos + m_remain_len) = 0xFF;
 		m_remain_len += 1;
-
 		len = Ql_strlen(programmData.dataState.iccid);
 		Ql_memcpy((m_pCurrentPos + m_remain_len), programmData.dataState.iccid, len);
 		m_remain_len += len;
+		*(m_pCurrentPos + m_remain_len) = 0xFF;
+		m_remain_len += 1;
+		s32 rs =  Ql_sprintf((m_pCurrentPos + m_remain_len), "%s", HW_VERSION);
+		if(rs > 0){
+			m_remain_len += rs;
+		}
 		////////////
         m_tcp_state = TCP_STATE_SOC_SEND;
     }
@@ -749,10 +781,12 @@ void callback_socket_close(s32 socketId, s32 errCode, void* customParam )
     {
         m_tcp_state = TCP_STATE_SOC_CREATE;
         APP_DEBUG("<--CallBack: close socket successfully.-->\r\n");
-    }else
+    }
+    else
     {
         APP_DEBUG("<--CallBack: close socket failure,(socketId=%d,error_cause=%d)-->\r\n",socketId,errCode);
     }
+    m_socketid = -1;
 }
 
 void callback_socket_accept(s32 listenSocketId, s32 errCode, void* customParam )
@@ -776,7 +810,7 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
     do
     {
         ret = Ql_SOC_Recv(socketId, m_recv_buf, RECV_BUFFER_LEN);
-        if(ret < 0)
+        if((ret < 0) && (ret != SOC_NONBLOCK ))//не менять на SOC_ERROR_WOULDBLOCK
         {
             APP_DEBUG("<-- Receive data failure,ret=%d.-->\r\n",ret);
             APP_DEBUG("<-- Close socket.-->\r\n");
@@ -785,19 +819,16 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
             m_tcp_state = TCP_STATE_SOC_CREATE;
             break;
         }
-        else if(ret <= RECV_BUFFER_LEN)
-        /*{
-            APP_DEBUG("<-- Receive data from sock(%d), len(%d) and write to UART_PORT1 -->\r\n", socketId, ret);
-            Ql_UART_Write(UART_PORT1, m_recv_buf, ret);
-
-            if(ret > 1)
-            	programmData.reconnectCnt = 0;
-            else if(ret == 1)
-            	programmData.reconnectCnt = programmSettings.secondsToReconnect/10;
-            break;
-        }*/
+        else if(ret == SOC_NONBLOCK)//не менять на SOC_ERROR_WOULDBLOCK
         {
-        	char tmp_buff[300] = {0};
+            //wait next CallBack_socket_read
+            break;
+        }
+        else if(ret <= RECV_BUFFER_LEN)
+        {
+        	programmData.ledCnt = ret;//blink
+
+        	char tmp_buff[TEMP_BUFFER_LEN] = {0};
         	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
             APP_DEBUG("<-- Receive data from sock(%d), len(%d) -->\r\n", socketId, ret);
@@ -827,6 +858,13 @@ void callback_socket_read(s32 socketId, s32 errCode, void* customParam )
     				Ql_UART_Write(UART_PORT1, m_recv_buf, ret);
     			}
     		}
+
+    		/*//сброс счетчика переконнекта, убрал тк влияет на логику переконнектов
+            if(ret > 1)
+            	programmData.reconnectCnt = 0;
+            else if(ret == 1)
+            	programmData.reconnectCnt = programmSettings.secondsToReconnect/10;
+ 	 	 	 */
             //read finish, wait next CallBack_socket_read
             break;
         }
@@ -879,7 +917,11 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     //APP_DEBUG("<-- time to feed logic watchdog wtdid=%d-->\r\n", *wtdid);
     if(programmData.needReboot == FALSE)
     {
-    	Ql_WTD_Feed(*wtdid);
+    	//feed logic wdt
+    	Ql_WTD_Feed(*wtdid);//APP_DEBUG("<-- time to feed logic watchdog wtdId=%d -->\r\n",*wtdid);
+
+    	//feed HW wdt
+    	Ql_GPIO_SetLevel(wdt_pin, Ql_GPIO_GetLevel(wdt_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
     }
     else
     {
@@ -888,12 +930,13 @@ static void wdt_callback_onTimer(u32 timerId, void* param)
     	do
     	{
     		Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
-    		Ql_Sleep(50);
+    		Ql_Sleep(100);
     	}
     	while(cnt--);
     	APP_DEBUG("<-- wdt_callback_onTimer wait real wdt reboot successfull, try Ql_Reset-->\r\n");
     	Ql_Sleep(100);
     	Ql_Reset(0);
+    	while(1);
     }
 }
 
@@ -957,6 +1000,12 @@ static void gpio_callback_onTimer(u32 timerId, void* param)
 				reboot(&programmData);
 			}
 		}
+
+		if(programmData.ledCnt > 0){
+			programmData.ledCnt--;
+			Ql_GPIO_SetLevel(led_pin, Ql_GPIO_GetLevel(led_pin) == PINLEVEL_HIGH ? PINLEVEL_LOW : PINLEVEL_HIGH);
+		}
+
 	}
 	else if (LED_TIMER_ID == timerId)
 	{
@@ -1000,15 +1049,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 			if ( *((u32*)param) % 60 == 0)
 			{
 				if(GetLocalTime() == TRUE){
-					//sync
-					//u32 addSeconds = programmData.dataState.totalSeconds % 60;
-					//if(addSeconds != 0)
-					//{
-					//	u32 upMinutes = *((u32*)param)/60;
-					//	APP_DEBUG("<--time_callback_onTimer: upTime=%u, totalSeconds=%u, upMinutes=%u, addSeconds=%u -->\r\n", *((u32*)param), programmData.dataState.totalSeconds, upMinutes, addSeconds);
-					//	*((u32*)param) = upMinutes * 60 + addSeconds;
-					//	APP_DEBUG("<--time_callback_onTimer: new upTime=%u -->\r\n", *((u32*)param));
-					//}
+
 				}
 				//u32 totalMinutes = programmData.dataState.totalSeconds/60;
 				//APP_DEBUG("<--time_callback_onTimer: totalSeconds=%d.-->\r\n", programmData.dataState.totalSeconds);
@@ -1039,6 +1080,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	        	programmData.durationCnt  = programmSettings.secondsOfDuration;
 	        	APP_DEBUG("<-- Duration reload = <%lu> -->\r\n", programmData.durationCnt);
 	        }
+	        programmData.tryconnectCnt = 0;
 		}
 	    if(programmData.durationCnt > 0)
 	    {
@@ -1059,7 +1101,7 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	    	programmData.pingCnt  = 0;
 	    	if(m_remain_len == 0 && m_pCurrentPos == NULL && m_socketid >= 0)
 	        {
-	        	char tmp_buff[300] = {0};
+	        	char tmp_buff[TEMP_BUFFER_LEN] = {0};
 	        	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
 	        	//if(programmSettings.ipSettings.mode)
@@ -1095,24 +1137,27 @@ static void InitWDT(s32 *wtdid)
     s32 ret;
 
     APP_DEBUG("<-- InitWDT -->\r\n");
-    // Initialize external watchdog: specify the GPIO pin (PINNAME_RI) and the overflow time is 600ms.
-    ret = Ql_WTD_Init(0, PINNAME_RI, 600);//дергаем ногой почаще тк время сброса у tps-ки 1600мс
-    if (0 == ret)
-        APP_DEBUG("\r\n<--OpenCPU: watchdog init OK!-->\r\n");
 
+    //Переделал HW WDT на самостоятельное дерганье ногой.
+    // Initialize external watchdog: specify the GPIO pin (PINNAME_RI) and the overflow time is 600ms.
+    //ret = Ql_WTD_Init(0, wdt_pin, 300);//дергаем ногой почаще тк время сброса у tps-ки 1600мс
+    //if (0 == ret)
+    //    APP_DEBUG("\r\n<--OpenCPU: watchdog init OK!-->\r\n");
+
+    //init pin
+    Ql_GPIO_Init(wdt_pin, PINDIRECTION_OUT, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);
     // Create a logic watchdog, the interval is 1.5 s
     *wtdid = Ql_WTD_Start(WTD_TMR_TIMEOUT);
     APP_DEBUG("<-- InitWDT wtdid=%d-->\r\n", *wtdid);
 
-
     // Register & start a timer to feed the logic watchdog.
-    ret = Ql_Timer_Register(LOGIC_WTD1_TMR_ID, wdt_callback_onTimer, wtdid);
+    ret = Ql_Timer_RegisterFast(LOGIC_WTD1_TMR_ID, wdt_callback_onTimer, wtdid);
     if(ret < 0){
         APP_DEBUG("<--main task: register fail ret=%d-->\r\n", ret);
         return;
     }
-    // The real feeding interval is 1 s
-    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 1000, TRUE);
+    // The real feeding interval is 0.3 s
+    ret = Ql_Timer_Start(LOGIC_WTD1_TMR_ID, 300, TRUE);
     if(ret < 0){
         APP_DEBUG("<--main task: start timer fail ret=%d-->\r\n",ret);
         return;
@@ -1293,7 +1338,14 @@ static void InitSN(void)
     	APP_DEBUG("<-- IMEI:%s, ret=%d -->\r\n", programmData.dataState.imei, ret);
     }
 
-
+    char strCCID[30];
+    Ql_memset(strCCID, 0x0, sizeof(strCCID));
+    ret = RIL_SIM_GetCCID(strCCID);
+    if(ret == QL_RET_OK){
+    	Ql_memset(programmData.dataState.iccid, 0x0, sizeof(programmData.dataState.iccid));
+    	Ql_strcpy(programmData.dataState.iccid, strCCID);
+    	APP_DEBUG("<-- ICCID:%s, ret=%d -->\r\n", programmData.dataState.iccid, ret);
+    }
 
     u8 tmpbuf[100];
     Ql_memset(tmpbuf, 0, sizeof(tmpbuf));
@@ -1305,17 +1357,6 @@ static void InitSN(void)
     {
         APP_DEBUG("<-- Get SDK Version Failure. -->\r\n");
     }
-
-    char strCCID[30];
-    Ql_memset(strCCID, 0x0, sizeof(strCCID));
-    ret = RIL_SIM_GetCCID(strCCID);
-    if(ret == QL_RET_OK){
-    	Ql_memset(programmData.dataState.iccid, 0x0, sizeof(programmData.dataState.iccid));
-    	Ql_strcpy(programmData.dataState.iccid, strCCID);
-    	APP_DEBUG("<-- ICCID:%s, ret=%d -->\r\n", programmData.dataState.iccid, ret);
-    }
-
-
 
     APP_DEBUG("<-- InitSN end -->\r\n");
 }
@@ -1378,13 +1419,15 @@ static bool GetLocalTime(void)
 
 static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 {
-	APP_DEBUG("Read data from port=%d, len=%d\r\n", port, len);
+	APP_DEBUG("<-- Read data from serial port=%d, len=%d -->\r\n", port, len);
 	pData[len] = 0;
-	char tmp_buff[300] = {0};
+	char tmp_buff[TEMP_BUFFER_LEN] = {0};
 	Ql_memset(tmp_buff, 0x0, sizeof(tmp_buff));
 
 	if(port == UART_PORT1)//485
 	{
+		programmData.ledCnt = len;//blink
+
 		//send it to server
 		m_pCurrentPos = m_send_buf;
 		if(programmSettings.ipSettings.mode == 101)
@@ -1396,6 +1439,7 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 		Ql_memcpy(m_pCurrentPos + m_remain_len, pData, len);//!!!
 		m_remain_len += len;
 		/////////////////////////////////////
+		/*
 		if(len < sizeof(tmp_buff) - 50)
 		{
 			Ql_sprintf(tmp_buff ,"HEX STRING from port=[");
@@ -1406,8 +1450,9 @@ static void proc_handle(Enum_SerialPort port, u8 *pData,s32 len)
 			}
 			//Ql_strcat(tmp_buff, "]\r\n");
 			APP_DEBUG("%s]\r\n", tmp_buff);
-		}
+		}*/
 	    /////////////////////////////////////
+		APP_DEBUG("<-- Need send by socket, remain_len=%d -->\r\n", m_remain_len);
 	}
 	else
 	{

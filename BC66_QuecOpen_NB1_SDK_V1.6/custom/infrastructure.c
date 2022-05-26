@@ -201,6 +201,30 @@ char *Gsm_GetSignal(char *tmp_buff)
     return tmp_buff;
 }
 
+//**************************************************
+char *ping_cmd(char *cmdstr, char *tmp_buff)
+{
+	  char *ret = NULL;
+	  bool r = FALSE;
+
+	  APP_DEBUG("<-- ping_cmd address=<%s> -->\r\n", cmdstr);
+	  r = Ql_NW_Ping(cmdstr);
+
+	  if(r == TRUE){
+	      Ql_strcpy(tmp_buff, "\r\n");
+	      Ql_strcat(tmp_buff, "ping OK");
+	      Ql_strcat(tmp_buff, "\r\n");
+		  ret = tmp_buff;
+	  }
+	  else{
+	      Ql_strcpy(tmp_buff, "\r\n");
+	      Ql_strcat(tmp_buff, "ping ERROR");
+	      Ql_strcat(tmp_buff, "\r\n");
+	      ret = tmp_buff;
+	  }
+	  return ret;
+}
+
 #ifdef __PROJECT_SMART_BUTTON__
 
 void reboot(sProgrammData *programmData)
@@ -476,6 +500,8 @@ void reboot(sProgrammData *programmData)
 	//Ql_Reset(0);
 }
 
+
+
 /*****************************************************************************
 * Function:
 *
@@ -489,7 +515,6 @@ void reboot(sProgrammData *programmData)
 char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ram, sProgrammData *programmData)//
 {
 	char *ret = NULL;
-	//APP_DEBUG("Parse_Command firstInit=%d\r\n", programmData->firstInit);
 	if(programmData->firstInit == TRUE)
 	{
 		char *cmdstart1 = "cmd ";
@@ -516,6 +541,12 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
   	      Ql_strcat(tmp_buff, "\r\n");
   	      ret = tmp_buff;
 		}
+		else if(Ql_strstr(src_str, "cmd ping ") != 0)
+		{
+			s32 len = Ql_strlen(src_str) - 	Ql_strlen("cmd ping ");
+			if(len > 0)
+				ret = ping_cmd(&src_str[Ql_strlen("cmd ping ")], tmp_buff);
+		}
 		else if(Ql_strcmp(src_str, "cmd reboot") == 0)
 		{
 			reboot(programmData);
@@ -524,7 +555,7 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 		}
 		else if(Ql_strcmp(src_str, "cmd reconnect") == 0)
 		{
-			programmData->reconnectCnt = sett_in_ram->secondsToReconnect;
+			programmData->reconnectCnt = 0;//sett_in_ram->secondsToReconnect;
 			Ql_strcpy(tmp_buff, "\r\nreconnecting\r\n");
 			ret = tmp_buff;
 		}
@@ -570,12 +601,11 @@ char *Parse_Command(char *src_str, char *tmp_buff, sProgrammSettings *sett_in_ra
 
 			ret = tmp_buff;
 		}
-		if(Ql_strcmp(src_str, "cmd deep sleep mode") == 0)
+		else if(Ql_strcmp(src_str, "cmd deep sleep mode") == 0)
 		{
 			Ql_strcpy(tmp_buff, "\r\ngo to deep sleep mode\r\n");
 			ret = tmp_buff;
 			Ql_SleepEnable();
-
 		}
 		else{
 			char *cmdstart = "cmd set ";
@@ -682,6 +712,7 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     	  if(vlen <= 0)
     		  return NULL;
 
+    	  APP_DEBUG("<--set_cmd cmd=<%s>, val=<%s>-->\r\n", cmd, val);
     	  if(Ql_strcmp(cmd, "mode") == 0)
     	  {
     		  s32 mode = Ql_atoi(val);
@@ -865,11 +896,35 @@ char *set_cmd(char *cmdstr, char *tmp_buff, sProgrammSettings* sett_in_ram, sPro
     			  r = TRUE;
     		  }
     	  }
+    	  else if(Ql_strcmp(cmd, "tryconnect") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);
+    		  if(value >= 1 && value <= 255){
+    			  sett_in_ram->tryConnectCnt = value;
+    			  r = TRUE;
+    		  }
+    	  }
     	  else if(Ql_strcmp(cmd, "toping") == 0 || Ql_strcmp(cmd, "periodsend") == 0)
     	  {
     		  s32 timeout = Ql_atoi(val);
     		  if(timeout >= 30){ // 0.5 min
     			  sett_in_ram->secondsToPing = timeout;
+    			  r = TRUE;
+    		  }
+    	  }
+     	  else if(Ql_strcmp(cmd, "sampling count") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);//
+    		  if(value >= 1){ //
+    			  sett_in_ram->adcSettings.samplingCount = value;
+    			  r = TRUE;
+    		  }
+    	  }
+     	  else if(Ql_strcmp(cmd, "sampling interval") == 0)
+    	  {
+    		  s32 value = Ql_atoi(val);//
+    		  if(value >= 200){ // min=200ms
+    			  sett_in_ram->adcSettings.samplingInterval = value;
     			  r = TRUE;
     		  }
     	  }
@@ -1111,6 +1166,16 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
 		  Ql_strcat(tmp_buff, "\r\n");
 		  ret = tmp_buff;
 		}
+	    else if(Ql_strcmp(cmd, "tryconnect") == 0)
+	    {
+		  Ql_sprintf(tbuff ,"%d", sett_in_ram->tryConnectCnt);
+	      Ql_strcpy(tmp_buff, "\r\n");
+	      Ql_strcat(tmp_buff, cmd);
+	      Ql_strcat(tmp_buff, "=");
+	      Ql_strcat(tmp_buff, tbuff);
+	      Ql_strcat(tmp_buff, "\r\n");
+	      ret = tmp_buff;
+	    }
 		else if(Ql_strcmp(cmd, "baudrate") == 0)
 		{
 		  Ql_sprintf(tbuff ,"%d", (int)sett_in_ram->serPortSettings.baudrate);
@@ -1194,6 +1259,16 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
 			Ql_strcat(tmp_buff, "\r\n");
 		  ret = tmp_buff;
 		}
+	    else if(Ql_strcmp(cmd, "devicetype") == 0)
+	    {
+	    	Ql_sprintf(tbuff ,"%s", HW_VERSION);
+	    	Ql_strcpy(tmp_buff, "\r\n");
+	      	Ql_strcat(tmp_buff, cmd);
+	      	Ql_strcat(tmp_buff, "=");
+	      	Ql_strcat(tmp_buff, tbuff);
+	      	Ql_strcat(tmp_buff, "\r\n");
+	      ret = tmp_buff;
+	    }
 		else if(Ql_strcmp(cmd, "firmware version") == 0)
 		{
 			s32 rr = RIL_GetFirmwareVer(tbuff); //Ql_GetSDKVer((u8*)tbuff, sizeof(tbuff));
