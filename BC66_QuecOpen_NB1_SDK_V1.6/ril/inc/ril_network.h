@@ -35,7 +35,7 @@
 #define __RIL_NETWORK_H__
 #include "ql_type.h"
 #include "ril_sim.h"
-
+#include "typedef.h"
 
 /****************************************************************************
  * Definition for network State
@@ -71,6 +71,13 @@ typedef struct{
     int id;
 }NIDD_CR_Reponse;
 
+
+typedef struct{
+    u8 gprsApn[MAX_GPRS_APN_LEN];
+    u8 gprsUser[MAX_GPRS_USER_NAME_LEN];
+    u8 gprsPass[MAX_GPRS_PASSWORD_LEN];
+    u8 mode;
+}ST_PdnConfig;
 
 s32 RIL_NW_SendATCmd(char* strAT, char *outValue);
 
@@ -117,6 +124,7 @@ s32 RIL_NW_SetCFUN(Enum_Cfun_Level cfun);
 *                                      and then call Ql_RIL_Initialize to initialize RIL.
 *****************************************************************/
 s32 RIL_NW_SetPSM(Enum_PSM_Mode mode);
+
 
 /******************************************************************************
 * Function:     RIL_NW_GetGPRSState
@@ -226,6 +234,15 @@ s32  RIL_NW_GetCSCON(u8 *state);
 *                                      and then call Ql_RIL_Initialize to initialize RIL.
 ******************************************************************************/
 s32  RIL_NW_GetQENG(u8 mode, s32* rsp);
+
+//////////////////////////////////////////////////////////////////
+bool RIL_NW_ConvertPDPtypeFrom(u8 mode, char *ret);
+
+bool RIL_NW_ConvertPDPtypeTo(char *mode, u8 *ret);
+
+s32 RIL_NW_SetDEFCONT(ST_PdnConfig cfg);
+
+s32  RIL_NW_GetDEFCONT(ST_PdnConfig *cfg);
 
 //////////////////////////////////////////////////////////////////
 s32  Ql_PDN_Activate(u8 sid, u8 mode, char* apn, char* userName, char* pw);

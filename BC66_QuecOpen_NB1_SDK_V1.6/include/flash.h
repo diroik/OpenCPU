@@ -15,6 +15,7 @@
  u16 	calc_settings_crc(sProgrammSettings *sett);
  bool 	init_flash(sProgrammSettings *sett_in_ram);
  bool 	write_to_flash_settings(sProgrammSettings *sett);
+ bool 	update_flash_settings(sProgrammSettings *sett);
  bool 	restore_default_flash(sProgrammSettings *sett_in_ram);
 
 

@@ -47,7 +47,7 @@ static s32 m_iErrCode = 0; // Is used to record the specific error code
 s32 Ql_RIL_AT_GetErrCode(void) {return m_iErrCode;}
 //
 // Developer can call this API to set the error code when resolving the response for AT.
-s32 Ql_RIL_AT_SetErrCode(s32 errCode) {m_iErrCode = errCode;}
+s32 Ql_RIL_AT_SetErrCode(s32 errCode) {m_iErrCode = errCode; return 0;}
 
 /******************************************************************************
 * Function:     Default_atRsp_callback

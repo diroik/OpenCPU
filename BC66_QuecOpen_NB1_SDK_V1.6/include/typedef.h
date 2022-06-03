@@ -30,17 +30,17 @@ static char DBG_BUFFER[DBG_BUF_LEN];
 
 #define MAX_GPRS_USER_NAME_LEN 32
 #define MAX_GPRS_PASSWORD_LEN  32
-#define MAX_GPRS_APN_LEN       64
+#define MAX_GPRS_APN_LEN       32//64
 
 #define MAX_ADDRESS_LEN 64
 #define MAX_KOEFF_LEN 2
 #define AUT_PASSWORD_LEN 16
 
 #define MAX_FTP_ADDRESS_LEN 32
-#define MAX_FTP_USER_NAME_LEN 16
-#define MAX_FTP_PASSWORD_LEN  16
-#define MAX_FTP_FILENAME_LEN  16
-#define MAX_FTP_FILEPATH_LEN  16
+#define MAX_FTP_USER_NAME_LEN 32//16
+#define MAX_FTP_PASSWORD_LEN  32//16
+#define MAX_FTP_FILENAME_LEN  32//16
+#define MAX_FTP_FILEPATH_LEN  32//16
 
 #define RESISTOR 2000.0
 #define AUT_TIMEOUT 300
@@ -206,8 +206,8 @@ typedef struct{
 
 #else
 
-#define FW_VERSION "1.36"
-#define HW_VERSION "GSM-B01"
+#define FW_VERSION "1.38"
+#define HW_VERSION "GSM-4G.01"
 
 typedef struct{
 	u32 pid;
@@ -279,9 +279,9 @@ typedef struct{
     //sBuffer     serToGsmRxBuffer;
     //sBuffer     gsmToSerRxBuffer;
 
-    s32				buttonCnt;//in 100 ms
-    s32 		   	in1Cnt;
-    s32				in2Cnt;
+    s32				buttonCnt;//вспомогательная переменная in GPIO_INPUT_TIMER_PERIOD ms (10)
+    s32 		   	in1Cnt;//вспомогательная переменная для избежания дребезга
+    s32				in2Cnt;//вспомогательная переменная для избежания дребезга
     bool 			HbuttonState;
     bool 			Hin1State;
     bool 			Hin2State;

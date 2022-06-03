@@ -41,7 +41,7 @@ static sProgrammSettings firstInitSettings =
     .adcSettings.samplingCount = 5,
     .adcSettings.samplingInterval = 200,
 
-    .gsmSettings.gprsApn = "internet",
+    .gsmSettings.gprsApn = "iot",
     .gsmSettings.gprsUser = "",
     .gsmSettings.gprsPass = "",
     //.gsmSettings.gprsDialNumber = "*99***1#",
@@ -93,8 +93,8 @@ static sProgrammSettings firstInitSettings =
 u16 calc_settings_crc(sProgrammSettings *sett)
 {
   u16 crc = 0;
-  u8 *tmp = (u8 *)sett + 4;
-  int len = sizeof(*sett) - 4;
+  u8 *tmp = (u8 *)sett + 3;
+  int len = sizeof(*sett) - 3;
   if(len > 0)
   {
     for(int i=0; i<len; i++)
@@ -175,3 +175,23 @@ bool write_to_flash_settings(sProgrammSettings *sett)
   return ret;
 }
 
+bool update_flash_settings(sProgrammSettings *sett)
+{
+  bool              ret = FALSE;//TRUE;
+  sProgrammSettings tmp;
+  u8 				index = 1;//0-2048b; 1-2048b
+  u32 				len = sizeof(sProgrammSettings);
+
+  s32 r = Ql_Flash_Read(index, 0, (u8*)&tmp, len);
+  if(r == 0 )
+  {
+	  u16 new_crc = calc_settings_crc(sett);
+	  u16 old_crc = calc_settings_crc(&tmp);
+	  APP_DEBUG("<--update_flash_settings new_crc=%d old_crc=%d-->\r\n", new_crc, old_crc);
+	  if(new_crc != old_crc){
+		  APP_DEBUG("<--update_flash_settings need update flash-->\r\n");
+		  return write_to_flash_settings(sett);
+	  }
+  }
+  return ret;
+}

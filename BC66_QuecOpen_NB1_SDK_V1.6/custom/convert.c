@@ -457,4 +457,18 @@ s32 toJSON(char *dst, sDataJsonParams *src)
 	return len;
 }
 
+
+u32 memcpy_exept(char *dest, char *src, u32 len, char exept)
+{
+	u32 index = 0;
+	for(u32 i = 0; i < len; i++){
+		if(src[i] != exept){
+			dest[index++] = src[i];
+		}
+	}
+
+	//APP_DEBUG("memcpy_exept ret=%d, len=%d\n", index, len);
+	return index;
+}
+
 #endif

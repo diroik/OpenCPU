@@ -90,7 +90,7 @@ bool init_flash(sProgrammSettings *sett_in_ram)
   bool ret = FALSE;
   //sConnectionSettings temp;
   sProgrammSettings tmp;
-  u8 index = 13;//13
+  u8 index = 13;//13 - 500byte
   u32 len = sizeof(sProgrammSettings);
   Ql_Debug_Trace("<--init_flash need len=%d index=%d, start Ql_SecureData_Read-->\r\n", len, index);
 

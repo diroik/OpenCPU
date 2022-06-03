@@ -40,6 +40,7 @@
 #include "ql_system.h"
 #include "ql_trace.h"
 #include "typedef.h"
+#include "convert.h"
 
 #ifdef __OCPU_RIL_SUPPORT__
 
@@ -130,7 +131,7 @@ static s32 ATResponse_CSQ_Handler(char* line, u32 len, void* param)
         p2 = Ql_strstr(p1 + 1, "\r\n");
         if (p1 && p2)
         {
-            Ql_memcpy((char*)param, p1 + 2, p2 - p1 - 2);
+            Ql_memcpy((char*)param, p1 + 2, (p2 - p1) - 2);
         }
     }
     return RIL_ATRSP_CONTINUE; //continue wait
@@ -257,9 +258,76 @@ static s32 ATResponse_QENG_Handler(char* line, u32 len, void* param)
         p2 = Ql_strstr(p1 + 1, "\r\n");
         if (p1 && p2)
         {
-            Ql_memcpy((char*)param, p1 + 2, p2 - p1 - 2);
+            Ql_memcpy((char*)param, p1 + 2, (p2 - p1) - 2);
         }
     }
+    return RIL_ATRSP_CONTINUE; //continue wait
+}
+
+static s32 ATResponse_DEFCON_Handler(char* line, u32 len, void* userdata)
+{
+    char *head = Ql_RIL_FindString(line, len, "+QCGDEFCONT:"); //continue wait
+    if(head)
+    {
+        ST_PdnConfig *cfg = (ST_PdnConfig *)userdata;
+    	//APP_DEBUG("ATResponse_DEFCON_Handler head=<%s>\r\n", line);
+    	char all[100];
+    	char mode[20];
+    	Ql_memset(mode, 0, sizeof(mode));
+    	Ql_memset(all, 0, sizeof(all));
+
+    	int sr = Ql_sscanf(head,"%*[^ ]%s[^\r\n]", all);
+    	//APP_DEBUG("ATResponse_DEFCON_Handler Ql_sscanf ret=<%d>, all=[%s]\r\n", sr, all);
+
+    	int index = 0;
+    	char* pch = strtok (all,",");
+    	while (pch != NULL)
+    	{
+    		u32 len = Ql_strlen(pch);
+    		//APP_DEBUG("index %d: %s, len=%d\n", index, pch, len);
+    		if(len > 0){
+            	if(index == 0){
+            		memcpy_exept(mode,  pch, len, '\"');
+            		RIL_NW_ConvertPDPtypeTo(mode, &cfg->mode);
+            	}
+            	if(index == 1){
+            		memcpy_exept(&cfg->gprsApn[0], pch, len, '\"');
+            	}
+            	if(index == 2){
+            		memcpy_exept(&cfg->gprsUser[0], pch, len, '\"');
+            	}
+            	if(index == 3){
+            		memcpy_exept(&cfg->gprsPass[0], pch, len, '\"');
+            		break;
+            	}
+    		}
+
+    		pch = strtok (NULL, ",");
+    		index++;
+    	}
+
+    	//APP_DEBUG("ATResponse_DEFCON_Handler mode=[%s]\r\n", mode);
+        return  RIL_ATRSP_CONTINUE;
+    }
+
+   head = Ql_RIL_FindLine(line, len, "OK"); // find <CR><LF>OK<CR><LF>, <CR>OK<CR>£¬<LF>OK<LF>
+   if(head)
+   {
+       return  RIL_ATRSP_SUCCESS;
+   }
+
+    head = Ql_RIL_FindLine(line, len, "ERROR");// find <CR><LF>ERROR<CR><LF>, <CR>ERROR<CR>£¬<LF>ERROR<LF>
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
+    head = Ql_RIL_FindString(line, len, "+CME ERROR:");//fail
+    if(head)
+    {
+        return  RIL_ATRSP_FAILED;
+    }
+
     return RIL_ATRSP_CONTINUE; //continue wait
 }
 
@@ -418,6 +486,99 @@ s32  RIL_NW_GetQENG(u8 mode, s32* rsp)
 		char strAT[] = "AT+QENG=2\0";
 		return Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_QENG_Handler, rsp, 0);
 	}
+}
+
+
+
+
+bool RIL_NW_ConvertPDPtypeFrom(u8 mode, char *ret)
+{
+	bool r = TRUE;
+	Ql_sprintf(ret,"");
+
+	if(mode == 1){
+		Ql_sprintf(ret,"IP");
+	}
+	else if(mode == 2){
+		Ql_sprintf(ret,"IPV6");
+	}
+	else if(mode == 3){
+		Ql_sprintf(ret,"IPV4V6");
+	}
+	else if(mode == 4){
+		Ql_sprintf(ret,"Non-IP");
+	}
+	else{
+		r = FALSE;
+	}
+	return r;
+}
+
+bool RIL_NW_ConvertPDPtypeTo(char *mode, u8 *ret)
+{
+	bool r = TRUE;
+	*ret = 0;
+
+	//APP_DEBUG("RIL_NW_ConvertPDPtypeTo mode=<%s>\r\n", mode);
+
+	if(Ql_strcmp("IP", mode) == 0){
+		*ret = 1;
+	}
+	else if(Ql_strcmp("IPV6", mode) == 0){
+		*ret = 2;
+	}
+	else if(Ql_strcmp("IPV4V6", mode) == 0){
+		*ret = 3;
+	}
+	else if(Ql_strcmp("Non-IP", mode) == 0){
+		*ret = 4;
+	}
+	else{
+		r = FALSE;
+	}
+
+	//APP_DEBUG("RIL_NW_ConvertPDPtypeTo *ret=<%d>\r\n", *ret);
+	return r;
+}
+
+s32  RIL_NW_GetDEFCONT(ST_PdnConfig *cfg)
+{
+	s32 retRes = RIL_AT_FAILED;
+	char strAT[] = "AT+QCGDEFCONT?\0";
+	//Ql_memset(cfg, 0, sizeof(cfg));
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_DEFCON_Handler, cfg, 0);
+	return retRes;
+}
+
+s32  RIL_NW_SetDEFCONT(ST_PdnConfig cfg)
+{
+    s32 retRes = RIL_AT_SUCCESS;
+    char strAT[150] ;
+    char tmp_buff[50] = {0};
+
+    Ql_memset(strAT,0x00, sizeof(strAT));
+    Ql_memset(tmp_buff,0x00, sizeof(tmp_buff));
+
+    if(RIL_NW_ConvertPDPtypeFrom(cfg.mode, tmp_buff) == FALSE){
+    	return RIL_AT_FAILED;
+    }
+
+    Ql_sprintf(strAT,"AT+QCGDEFCONT=");
+    Ql_strcat(strAT, "\"");
+    Ql_strcat(strAT, tmp_buff);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, cfg.gprsApn);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, cfg.gprsUser);
+    Ql_strcat(strAT, "\",\"");
+    Ql_strcat(strAT, cfg.gprsPass);
+    Ql_strcat(strAT, "\"");
+
+    u32 cmdLen 			= Ql_strlen(strAT);
+    APP_DEBUG("RIL_NW_SetDEFCONT strAT=<%s>, cmdLen=<%d>\r\n", strAT, cmdLen);
+
+    retRes = Ql_RIL_SendATCmd(strAT, Ql_strlen(strAT), ATResponse_Handler, NULL, 0);
+    return retRes;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -638,7 +799,7 @@ s32  Ql_NW_Ping(char* addr)
     Ql_memset(strAT, 0x00, sizeof(strAT));
 
     Ql_strcpy(strAT, "AT+QPING=");
-    Ql_strcat(strAT, "0,");//contextID
+    Ql_strcat(strAT, "1,");//contextID
     Ql_strcat(strAT, "\"");
     Ql_strcat(strAT, addr);
     Ql_strcat(strAT, "\"");

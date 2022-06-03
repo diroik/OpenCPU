@@ -36,7 +36,7 @@ u32 convertFromHex(char *dest, char *src, u32 len);
 bool fromJSON(char* str, sDataJsonParams* out);
 s32 toJSON(char *dst, sDataJsonParams *src);
 
-
+u32 memcpy_exept(char *dest, char *src, u32 len, char exept);
 
 
 //static bool getValue(const char *name, u32 *value);

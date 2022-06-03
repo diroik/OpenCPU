@@ -80,11 +80,6 @@ static s32 m_remain_len = 0;     // record the remaining number of bytes in send
 static char *m_pCurrentPos = NULL;
 
 /*****************************************************************
-* Other Param
-******************************************************************/
-#define TEMP_BUFFER_LEN 512
-
-/*****************************************************************
 * rtc param
 ******************************************************************/
 //static u32 Rtc_id = 111;
@@ -97,6 +92,13 @@ static u32 ADC_CustomParam = 0;
 //static Enum_PinName adcPin = PIN_ADC0;
 
 /*****************************************************************
+* power param
+******************************************************************/
+Enum_Ql_Power_On_Result_t m_pwrOnReason;
+Enum_Ql_Wake_Up_Result_t m_wakeUpReason;
+static s32 ds_param = 0;
+
+/*****************************************************************
 * Local time param
 ******************************************************************/
 ST_Time time;
@@ -105,7 +107,9 @@ u32 upTime = 0;
 /*****************************************************************
 * Other Param
 ******************************************************************/
+#define TEMP_BUFFER_LEN 512
 static u8 m_tcp_state = TCP_STATE_NW_GET_SIMSTATE;
+
 /*****************************************************************
 * user param
 ******************************************************************/
@@ -157,8 +161,8 @@ static s32 				led_cnt 	= 5;
 static Enum_PinName  	wdt_pin 	= PINNAME_RI;
 static Enum_PinName  	led_pin 	= PINNAME_GPIO2;//30
 static Enum_PinName  	button_pin 	= PINNAME_GPIO3;//31
-static Enum_PinName  	in1_pin 	= PINNAME_GPIO4;//32
-static Enum_PinName  	in2_pin 	= PINNAME_GPIO5;//33
+static Enum_PinName  	in1_pin 	= PINNAME_GPIO5; //PINNAME_GPIO4;//32
+static Enum_PinName  	in2_pin 	= PINNAME_GPIO4; //PINNAME_GPIO5;//33
 
 /*****************************************************************
 * uart callback function
@@ -172,7 +176,7 @@ static void wdt_callback_onTimer(u32 timerId, void* param);
 static void gsm_callback_onTimer(u32 timerId, void* param);
 static void gpio_callback_onTimer(u32 timerId, void* param);
 static void time_callback_onTimer(u32 timerId, void* param);
-
+static void Deepsleep_handler(void* param);
 /*****************************************************************
 * ADC callback function
 ******************************************************************/
@@ -238,6 +242,11 @@ void proc_main_task(s32 taskId)
     InitWDT(&wtdid);
     InitTCP();
 
+	ret = Ql_DeepSleep_Register(Deepsleep_handler, &ds_param);
+    if(ret <0){
+		APP_DEBUG("\r\n<--deepsleep handler register failed-->\r\n");
+    }
+
     while(TRUE)
     {
         Ql_OS_GetMessage(&msg);
@@ -249,6 +258,20 @@ void proc_main_task(s32 taskId)
 
             RIL_QNbiotEvent_Enable(PSM_EVENT);
             programmData.firstInit = TRUE;
+			m_pwrOnReason 			= Ql_GetPowerOnReason();
+			APP_DEBUG("<-- Ql_GetPowerOnReason m_pwrOnReason=%d-->\r\n", m_pwrOnReason);
+
+			/*
+			if(QL_DEEP_SLEEP == m_pwrOnReason){//deep sleep wake up
+				m_wakeUpReason = Ql_GetWakeUpReason();
+				APP_DEBUG("\r\n<--The module wake up from deep sleep mode, m_wakeUpReason=%d, m_pwrOnReason=%d-->\r\n", m_wakeUpReason, m_pwrOnReason);
+				//PSM_EINT_Flag 	= FALSE;
+				//RTC_Flag 		= FALSE;
+			}
+			else if (QL_SYS_RESET == m_pwrOnReason){// reset
+           		APP_DEBUG("\r\n<--The module reset or first power on-->\r\n");
+			}
+			*/
             break;
 
      	case MSG_ID_URC_INDICATION:
@@ -316,6 +339,7 @@ void proc_subtask1(s32 TaskId)
     InitGPIO();
     InitADC();
     //InitSN();
+    //InitSleepMode();//AT+QSCLK=2
 
     APP_DEBUG("<-- subtask1: enter, subTaskId1=%d ->\r\n", programmData.subTaskId1);
 
@@ -439,6 +463,36 @@ static void gsm_callback_onTimer(u32 timerId, void* param)
                 APP_DEBUG("<--Network State:cgreg=%d-->\r\n",cgreg);
                 if((cgreg == NW_STAT_REGISTERED)||(cgreg == NW_STAT_REGISTERED_ROAMING))
                 {
+
+                	ST_PdnConfig cfg = {.mode = 0, .gprsApn = "", .gprsUser = "", .gprsPass = ""};
+                	ret = RIL_NW_GetDEFCONT(&cfg);
+                	APP_DEBUG("<-- RIL_NW_GetDEFCONT ret=%d, mode=[%d], apn=[%s], user=[%s], pass=[%s]-->\r\n", ret, cfg.mode, cfg.gprsApn, cfg.gprsUser, cfg.gprsPass);
+
+                	//bool bmode =
+
+
+                	if( (cfg.mode != 1 && cfg.mode != 3) ||
+                			Ql_strcmp(cfg.gprsApn, programmSettings.gsmSettings.gprsApn) != 0 ||
+                			Ql_strcmp(cfg.gprsUser, programmSettings.gsmSettings.gprsUser) != 0 ||
+                			Ql_strcmp(cfg.gprsPass, programmSettings.gsmSettings.gprsPass) != 0){
+
+                		ST_PdnConfig set_cfg = {.mode = 1};
+                		Ql_strcpy(set_cfg.gprsApn, programmSettings.gsmSettings.gprsApn);
+                		Ql_strcpy(set_cfg.gprsUser, programmSettings.gsmSettings.gprsUser);
+                		Ql_strcpy(set_cfg.gprsPass, programmSettings.gsmSettings.gprsPass);
+
+                		APP_DEBUG("<-- Need RIL_NW_SetDEFCONT -->\r\n");
+
+                		ret = RIL_NW_SetDEFCONT(set_cfg);
+
+                		//APP_DEBUG("<-- Need RIL_NW_SetDEFCONT ret=%d-->\r\n", ret);
+                		if(ret == RIL_AT_SUCCESS){
+                			programmData.needReboot = TRUE;
+                		}
+                		else{
+                			APP_DEBUG("<-- Error by set QCGDEFCONT !!! -->\r\n");
+                		}
+                	}
                     m_tcp_state = TCP_STATE_GET_LOCALIP;
                 }
                 break;
@@ -885,7 +939,7 @@ static void Callback_OnADCTimer_handler(u32 timerId, void* customParam)
 	{
 		//programmData.dataState.temp = GetTempValue(adcValue);
 		programmData.dataState.voltage = voltage;
-		APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%f -->\r\n", voltage, adcValue, programmData.dataState.temp);
+		APP_DEBUG( "<-- PowerSupply: power voltage(mV)=%d, sampling voltage(mV)=%d, temp value=%.3f -->\r\n", voltage, adcValue, programmData.dataState.temp);
 	}
 }
 /*
@@ -1076,11 +1130,13 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	        }
 	        APP_DEBUG("<-- reconnectCnt reload = <%lu> -->\r\n", programmData.reconnectCnt);
 	        u32 dur = 60;
-	        if(programmSettings.secondsOfDuration >= 30){
-	        	programmData.durationCnt  = programmSettings.secondsOfDuration;
-	        	APP_DEBUG("<-- Duration reload = <%lu> -->\r\n", programmData.durationCnt);
-	        }
+	        if(programmSettings.secondsOfDuration >= 30)
+	        	dur = programmSettings.secondsOfDuration;
+        	programmData.durationCnt  = dur;
+        	APP_DEBUG("<-- Duration reload = <%lu> -->\r\n", programmData.durationCnt);
 	        programmData.tryconnectCnt = 0;
+
+	        Ql_SleepDisable();
 		}
 	    if(programmData.durationCnt > 0)
 	    {
@@ -1094,6 +1150,14 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	  	        	m_tcp_state = TCP_STATE_NW_GET_SIMSTATE;
 	  	        }
 	  	        APP_DEBUG("<-- Duration is off, close socket and go sim_state -->\r\n");
+	  	        Ql_SleepEnable();
+	  	        ////save cnt data to flash if need////////////
+	  	        if(programmSettings.in1Timeout == 0 || programmSettings.in2Timeout == 0){
+	  	        	programmSettings.counter1.ImpulseCnt = programmData.dataState.in1Cnt;
+	  	        	programmSettings.counter2.ImpulseCnt = programmData.dataState.in2Cnt;
+	  	        	update_flash_settings(&programmSettings);
+	  	        }
+	  	        //////////////////////////////////////////////
 	    	}
 	    }
 	    if(programmData.pingCnt++ >= programmSettings.secondsToPing)
@@ -1120,6 +1184,13 @@ static void time_callback_onTimer(u32 timerId, void* param)
 	    }
 		////////////////
 	}
+}
+
+// deepsleep callback function
+static void Deepsleep_handler(void* param)
+{
+	*((s32*)param) +=1;//not use
+	APP_DEBUG("<--The module enter deepsleep mode-->\r\n");
 }
 
 /*
@@ -1175,7 +1246,7 @@ static void InitFlash(void)
         ret = init_flash(&programmSettings);
         if(ret == TRUE)
         {
-        	APP_DEBUG("<-- init_flash OK crc=<%d> apn=<%s> user=<%s> pass=<%s> server=<%s> port=<%d> baudrate=<%d> toreconnect=<%d> duration=<%d> toreboot=<%d> counter1=[cnt=<%l> koef=<%d>] counter2=[cnt=<%l> koef=<%d>] -->\r\n",
+        	APP_DEBUG("<-- init_flash OK crc=<%d> apn=<%s> user=<%s> pass=<%s> server=<%s> port=<%d> baudrate=<%d> toreconnect=<%d> duration=<%d> toreboot=<%d> counter1=[cnt=<%lu> koef=<%u>] counter2=[cnt=<%lu> koef=<%u>] -->\r\n",
         			programmSettings.crc,
         			programmSettings.gsmSettings.gprsApn,
         			programmSettings.gsmSettings.gprsUser,
@@ -1264,6 +1335,8 @@ static void InitGPIO(void)
     Ql_GPIO_Init(button_pin, 	PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_DISABLE);
     Ql_GPIO_Init(in1_pin, 		PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_DISABLE);
     Ql_GPIO_Init(in2_pin, 		PINDIRECTION_IN, 	PINLEVEL_HIGH, 	PINPULLSEL_DISABLE);
+    //Ql_GPIO_Init(PINNAME_NETLIGHT,  PINDIRECTION_OUT, 	PINLEVEL_HIGH, 	PINPULLSEL_PULLUP);//test
+
 
     Ql_Timer_Register(GPIO_TIMER_ID, gpio_callback_onTimer, NULL);
     Ql_Timer_Start(GPIO_TIMER_ID, GPIO_INPUT_TIMER_PERIOD, TRUE);

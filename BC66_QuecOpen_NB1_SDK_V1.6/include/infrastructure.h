@@ -44,6 +44,7 @@ char *get_cmd(char *cmd, char *tmp_buff, sProgrammSettings* sett_in_ram, sProgra
 #ifdef __GSM_TEMINAL__
 bool AnalizePidPacket(u8 *buffer, s32 len, sPidPacket *lastPacket);
 s32 AddPidHeader(u8 typ, u8* buffer, s32 len, sPidPacket *lastPacket);
+
 #endif
 
 #endif /* INFRASTRUCTURE_H_ */
